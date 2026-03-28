@@ -17,7 +17,7 @@ import { AchievementsPage } from "@/pages/Achievements"
 export type Page = 'dashboard' | 'ai-chat' | 'courses' | 'wordbank' | 'achievements' | 'stats' | 'community' | 'settings' | 'visual-dictionary' | 'daily-podcast';
 
 const pageTitles: Record<Page, string> = {
-  dashboard: 'Dashboard',
+  dashboard: '首页',
   'ai-chat': 'AI Chat',
   courses: 'My Courses',
   wordbank: 'Word Bank',
@@ -35,7 +35,7 @@ function App() {
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage onNavigate={setActivePage} />;
       case 'ai-chat':
         return <AiChatPage />;
       case 'courses':
@@ -53,7 +53,7 @@ function App() {
       case 'achievements':
         return <AchievementsPage />;
       default:
-        return <DashboardPage />;
+        return <DashboardPage onNavigate={setActivePage} />;
     }
   }
 

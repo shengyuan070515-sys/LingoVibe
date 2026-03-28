@@ -1,65 +1,53 @@
-import { WelcomeHeader } from "@/components/dashboard/welcome-header"
-import { StatCards } from "@/components/dashboard/stat-cards"
-import { CourseList } from "@/components/dashboard/course-list"
+import * as React from 'react';
+import { WelcomeHeader } from '@/components/dashboard/welcome-header';
+import { StatCards } from '@/components/dashboard/stat-cards';
+import { DashboardQuickActions } from '@/components/dashboard/dashboard-quick-actions';
+import { DashboardRecentWords } from '@/components/dashboard/dashboard-recent-words';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useWordBankStore } from '@/store/wordBankStore';
+import { useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
+import { computeLearningStreak, todayKey } from '@/lib/learning-analytics';
+import type { Page } from '@/App';
 
-// 模拟数据 
-const userData = { 
-  name: "小明", 
-  avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix", 
-} 
+export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void }) {
+    const [nickname] = useLocalStorage('lingovibe_display_name', '');
+    const words = useWordBankStore((s) => s.words);
+    const dailyActivity = useLearningAnalyticsStore((s) => s.dailyActivity);
+    const lifetime = useLearningAnalyticsStore((s) => s.lifetime);
 
-const coursesData = [ 
-  { 
-    id: "1", 
-    title: "职场英语精进", 
-    description: "掌握商务沟通、邮件写作和会议用语", 
-    progress: 45, 
-    totalLessons: 24, 
-    completedLessons: 11, 
-    estimatedTime: "15 分钟", 
-    icon: "briefcase", 
-  }, 
-  { 
-    id: "2", 
-    title: "托福口语特训", 
-    description: "系统提升口语表达能力，冲刺高分", 
-    progress: 30, 
-    totalLessons: 30, 
-    completedLessons: 9, 
-    estimatedTime: "20 分钟", 
-    icon: "mic", 
-  }, 
-  { 
-    id: "3", 
-    title: "英语语法大师", 
-    description: "从基础到进阶，构建完整语法体系", 
-    progress: 72, 
-    totalLessons: 18, 
-    completedLessons: 13, 
-    estimatedTime: "10 分钟", 
-    icon: "book", 
-  }, 
-  { 
-    id: "4", 
-    title: "日常英语会话", 
-    description: "地道表达，轻松应对各种生活场景", 
-    progress: 15, 
-    totalLessons: 20, 
-    completedLessons: 3, 
-    estimatedTime: "12 分钟", 
-    icon: "globe", 
-  }, 
-] 
+    const streak = React.useMemo(() => computeLearningStreak(dailyActivity), [dailyActivity]);
+    const displayName = nickname.trim() || '语言学习者';
+    const avatarUrl = `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=e0f2fe`;
 
-export function DashboardPage() {
+    const wordCount = words.filter((w) => w && w.word?.trim()).length;
+    const today = todayKey();
+    const todayScore = dailyActivity[today] ?? 0;
+    const todayActivityHint =
+        todayScore > 0
+            ? `今日活跃度 ${todayScore} · 累计对话 ${lifetime.chatMessages} 次 · 视觉查词 ${lifetime.visualLookups} 次`
+            : '今天还没有活跃度记录，去对话或查词开启第一条吧。';
+
     return (
-        <div className="flex flex-col gap-8"> 
-            <WelcomeHeader 
-                userName={userData.name} 
-                avatarUrl={userData.avatarUrl} 
-            /> 
-            <StatCards /> 
-            <CourseList courses={coursesData} /> 
-        </div> 
-    )
+        <div className="relative min-w-0 pb-8">
+            <div
+                className="pointer-events-none absolute inset-0 -z-10 rounded-3xl opacity-90"
+                style={{
+                    background:
+                        'linear-gradient(165deg, rgba(224,242,254,0.65) 0%, rgba(255,255,255,0.4) 42%, rgba(253,230,224,0.35) 100%)',
+                }}
+            />
+            <div className="relative mx-auto flex max-w-5xl flex-col gap-10 px-0 pt-1 sm:pt-2">
+                <WelcomeHeader
+                    userName={displayName}
+                    avatarUrl={avatarUrl}
+                    streakDays={streak}
+                    wordCount={wordCount}
+                    todayActivityHint={todayActivityHint}
+                />
+                <StatCards />
+                <DashboardQuickActions onNavigate={onNavigate} />
+                <DashboardRecentWords onNavigate={onNavigate} />
+            </div>
+        </div>
+    );
 }
