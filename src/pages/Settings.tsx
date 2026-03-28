@@ -3,7 +3,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save } from 'lucide-react';
+import { Save, UserRound } from 'lucide-react';
 import { useWordBankStore } from "@/store/wordBankStore";
 import { testWordBankApiKey } from "@/lib/word-utils";
 
@@ -12,12 +12,18 @@ export function SettingsPage() {
     const [podcastApiKey, setPodcastApiKey] = useLocalStorage('podcast_api_key', '');
     const [unsplashApiKey, setUnsplashApiKey] = useLocalStorage('unsplash_api_key', 'E40fl55KwMFbFkYW-yAaIxPbCAEur8W2MpQIDQm6ZT0');
     const [wordBankApiKey, setWordBankApiKey] = useLocalStorage('wordbank_api_key', '');
+    const [displayName, setDisplayName] = useLocalStorage('lingovibe_display_name', '');
     const { refreshMissingDetails } = useWordBankStore();
     
     const [chatInput, setChatInput] = React.useState(chatApiKey);
     const [podcastInput, setPodcastInput] = React.useState(podcastApiKey);
     const [unsplashInput, setUnsplashInput] = React.useState(unsplashApiKey);
     const [wordBankKeyInput, setWordBankKeyInput] = React.useState(wordBankApiKey);
+    const [displayNameInput, setDisplayNameInput] = React.useState(displayName);
+
+    React.useEffect(() => {
+        setDisplayNameInput(displayName);
+    }, [displayName]);
     
     const { toast } = useToast();
 
@@ -54,6 +60,43 @@ export function SettingsPage() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
+            <Card className="border-none shadow-lg bg-white/80 backdrop-blur-md">
+                <CardHeader>
+                    <CardTitle className="text-xl font-bold flex items-center gap-2">
+                        <UserRound className="h-5 w-5 text-teal-600" />
+                        个人资料
+                    </CardTitle>
+                    <CardDescription>首页问候与头像种子会使用此昵称；留空则显示「语言学习者」。</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="flex-1 space-y-2">
+                        <label htmlFor="display-name" className="text-sm font-semibold text-gray-700">
+                            显示昵称
+                        </label>
+                        <input
+                            id="display-name"
+                            type="text"
+                            value={displayNameInput}
+                            onChange={(e) => setDisplayNameInput(e.target.value)}
+                            placeholder="例如：小雅"
+                            maxLength={24}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                        />
+                    </div>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        className="shrink-0 rounded-xl"
+                        onClick={() => {
+                            setDisplayName(displayNameInput.trim());
+                            toast('昵称已保存，返回首页即可看到效果', 'success');
+                        }}
+                    >
+                        保存昵称
+                    </Button>
+                </CardContent>
+            </Card>
+
             <Card className="border-none shadow-lg bg-white/80 backdrop-blur-md">
                 <CardHeader>
                     <CardTitle className="text-xl font-bold flex items-center gap-2">
