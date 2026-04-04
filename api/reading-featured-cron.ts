@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { currentDateKeyShanghai, ensureFeaturedForDate } from './lib/reading-featured-kv';
+import { currentDateKeyShanghai, ensureFeaturedForDate } from './lib/reading-featured-cache';
 
 /**
  * Vercel Cron 使用 GET；也可 POST 手动触发。
