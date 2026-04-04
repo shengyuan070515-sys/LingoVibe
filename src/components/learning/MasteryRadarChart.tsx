@@ -104,7 +104,7 @@ export function MasteryRadarChart({ scores, className }: MasteryRadarChartProps)
                 ))}
             </div>
             <p className="max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
-                分数由你在 LingoVibe 内的行为估算（播客、查词、对话、复习等），用于激励坚持，并非标准化语言测评。
+                分数由你在 LingoVibe 内的行为估算（阅读、查词、对话、复习等），用于激励坚持，并非标准化语言测评。
             </p>
         </div>
     );

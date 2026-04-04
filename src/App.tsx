@@ -4,7 +4,6 @@ import { Settings } from "lucide-react"
 import { seedDemoDataIfEmpty } from "@/lib/mockData"
 import { clearLegacyPodcastStorage } from "@/lib/migrations/clear-legacy-podcast-storage"
 import { useWordBankStore } from "@/store/wordBankStore"
-import { usePodcastStore } from "@/store/podcastStore"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -47,10 +46,8 @@ function App() {
     const run = () => seedDemoDataIfEmpty();
     run();
     const u1 = useWordBankStore.persist.onFinishHydration(run);
-    const u2 = usePodcastStore.persist.onFinishHydration(run);
     return () => {
       u1();
-      u2();
     };
   }, []);
 

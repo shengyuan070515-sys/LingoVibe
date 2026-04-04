@@ -1,22 +1,337 @@
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { BookOpen, Loader2, Search, Upload } from 'lucide-react';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { platformSearch, platformExtractMarkdown, type SearchHit } from '@/lib/reading-platform-api';
+import { estimateReadingDifficulty } from '@/lib/reading-ai';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
+import { useReadingLibraryStore, type ReadingDifficulty } from '@/store/readingLibraryStore';
+import { ReadingArticleView } from '@/pages/ReadingArticle';
+
+const QUICK_TOPICS = [
+    'technology news',
+    'climate science',
+    'culture essay',
+    'business English',
+    'health tips',
+    'travel story',
+];
+
+const DIFF_LABELS: Record<number, string> = {
+    1: '入门',
+    2: '基础',
+    3: '中级',
+    4: '进阶',
+    5: '高阶',
+};
 
 export interface DailyReadingPageProps {
-  onNavigateToSettings?: () => void;
+    onNavigateToSettings?: () => void;
 }
 
 export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps) {
-  return (
-    <div className={cn("mx-auto flex w-full max-w-lg flex-col gap-4")}>
-      <h1 className="text-xl font-semibold tracking-tight text-slate-800">每日阅读</h1>
-      <p className="text-sm leading-relaxed text-slate-600">
-        完整文章列表、搜索与导入等功能将在下一版迭代中提供。
-      </p>
-      {onNavigateToSettings ? (
-        <Button type="button" variant="outline" className="w-fit" onClick={onNavigateToSettings}>
-          去设置
-        </Button>
-      ) : null}
-    </div>
-  );
+    const articles = useReadingLibraryStore((s) => s.articles);
+    const addOrGetByUrl = useReadingLibraryStore((s) => s.addOrGetByUrl);
+    const addUserImport = useReadingLibraryStore((s) => s.addUserImport);
+    const remove = useReadingLibraryStore((s) => s.remove);
+    const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
+
+    const [readingKey] = useLocalStorage('reading_api_key', '');
+    const [searchKey] = useLocalStorage('reading_search_api_key', '');
+
+    const { toast } = useToast();
+
+    const [query, setQuery] = React.useState('');
+    const [hits, setHits] = React.useState<SearchHit[]>([]);
+    const [picked, setPicked] = React.useState<Set<string>>(() => new Set());
+    const [searching, setSearching] = React.useState(false);
+    const [importing, setImporting] = React.useState(false);
+
+    const [importTitle, setImportTitle] = React.useState('');
+    const [importBody, setImportBody] = React.useState('');
+
+    const [openId, setOpenId] = React.useState<string | null>(null);
+
+    const runSearch = async () => {
+        const q = query.trim();
+        if (!q) {
+            toast('请输入关键词或主题', 'error');
+            return;
+        }
+        if (!searchKey.trim()) {
+            toast('请先在设置中填写联网搜索 API Key（如 Bing）', 'error');
+            return;
+        }
+        setSearching(true);
+        setHits([]);
+        setPicked(new Set());
+        try {
+            const list = await platformSearch(q, searchKey.trim());
+            setHits(list);
+            if (list.length === 0) toast('没有搜索结果，可换关键词重试', 'default');
+        } catch (e) {
+            toast(e instanceof Error ? e.message : '搜索失败', 'error');
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const togglePick = (url: string) => {
+        setPicked((prev) => {
+            const next = new Set(prev);
+            if (next.has(url)) next.delete(url);
+            else next.add(url);
+            return next;
+        });
+    };
+
+    const ingestSelected = async () => {
+        if (picked.size === 0) {
+            toast('请先勾选文章', 'error');
+            return;
+        }
+        if (!readingKey.trim()) {
+            toast('请先在设置中填写每日阅读 DeepSeek Key（用于难度估计）', 'error');
+            return;
+        }
+        setImporting(true);
+        try {
+            for (const url of picked) {
+                const hit = hits.find((h) => h.url === url);
+                const title = hit?.title ?? url;
+                let md: string;
+                try {
+                    md = await platformExtractMarkdown(url);
+                } catch (e) {
+                    toast(`${title}: ${e instanceof Error ? e.message : '抽取失败'}`, 'error');
+                    continue;
+                }
+                if (!md.trim()) {
+                    toast(`${title}: 正文为空，已跳过`, 'error');
+                    continue;
+                }
+                let diff: ReadingDifficulty = 3;
+                try {
+                    diff = await estimateReadingDifficulty(readingKey.trim(), title, md.slice(0, 800));
+                } catch {
+                    diff = 3;
+                }
+                const res = addOrGetByUrl({ url, title, content: md, difficulty: diff });
+                if (!res.ok) {
+                    toast('链接无效，已跳过', 'error');
+                    continue;
+                }
+                if (res.duplicate) {
+                    toast(`「${title}」已在书库`, 'default');
+                    setOpenId(res.id);
+                } else {
+                    toast(`已入库：${title}`, 'success');
+                }
+            }
+            setPicked(new Set());
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleTxtFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const text = typeof reader.result === 'string' ? reader.result : '';
+            setImportBody(text);
+            if (!importTitle.trim()) setImportTitle(file.name.replace(/\.txt$/i, ''));
+        };
+        reader.readAsText(file, 'UTF-8');
+        e.target.value = '';
+    };
+
+    const submitUserImport = () => {
+        const body = importBody.trim();
+        if (!body) {
+            toast('请粘贴正文或上传 .txt', 'error');
+            return;
+        }
+        const title = importTitle.trim() || '用户导入';
+        const id = addUserImport({ title, content: body });
+        toast('已加入书库', 'success');
+        setImportTitle('');
+        setImportBody('');
+        setOpenId(id);
+    };
+
+    if (openId) {
+        return (
+            <ReadingArticleView
+                key={openId}
+                articleId={openId}
+                onBack={() => setOpenId(null)}
+                onNavigateToSettings={onNavigateToSettings}
+            />
+        );
+    }
+
+    return (
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+            <div>
+                <h1 className="text-xl font-semibold tracking-tight text-slate-800">每日阅读</h1>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    联网搜索后勾选入库，或粘贴/导入文本。打开文章后滚动至文末并满足停留时间，即可计入今日阅读闭环。
+                </p>
+            </div>
+
+            <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <Search className="h-4 w-4 text-teal-600" />
+                    联网检索
+                </h2>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="英文关键词或一句话主题"
+                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') void runSearch();
+                        }}
+                    />
+                    <Button type="button" disabled={searching} onClick={() => void runSearch()}>
+                        {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        搜索
+                    </Button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {QUICK_TOPICS.map((t) => (
+                        <button
+                            key={t}
+                            type="button"
+                            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-teal-50 hover:text-teal-800"
+                            onClick={() => setQuery(t)}
+                        >
+                            {t}
+                        </button>
+                    ))}
+                </div>
+                {hits.length > 0 ? (
+                    <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto border-t border-slate-100 pt-3">
+                        {hits.map((h) => (
+                            <li key={h.url} className="flex gap-2 rounded-lg border border-slate-100/80 bg-slate-50/50 p-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1"
+                                    checked={picked.has(h.url)}
+                                    onChange={() => togglePick(h.url)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-slate-800">{h.title}</p>
+                                    <p className="truncate text-xs text-slate-500">{h.url}</p>
+                                    {h.snippet ? <p className="mt-1 text-xs text-slate-600 line-clamp-2">{h.snippet}</p> : null}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
+                {hits.length > 0 ? (
+                    <Button
+                        type="button"
+                        className="mt-3"
+                        disabled={importing || picked.size === 0}
+                        onClick={() => void ingestSelected()}
+                    >
+                        {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        将选中项入库
+                    </Button>
+                ) : null}
+            </section>
+
+            <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <Upload className="h-4 w-4 text-teal-600" />
+                    导入文本
+                </h2>
+                <input type="file" accept=".txt,text/plain" className="mt-2 text-sm" onChange={handleTxtFile} />
+                <input
+                    value={importTitle}
+                    onChange={(e) => setImportTitle(e.target.value)}
+                    placeholder="标题（可选）"
+                    className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                />
+                <textarea
+                    value={importBody}
+                    onChange={(e) => setImportBody(e.target.value)}
+                    placeholder="粘贴英文正文…"
+                    rows={6}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                />
+                <Button type="button" className="mt-3" onClick={submitUserImport}>
+                    加入书库
+                </Button>
+            </section>
+
+            <section>
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <BookOpen className="h-4 w-4 text-teal-600" />
+                    我的书库 ({articles.length})
+                </h2>
+                {articles.length === 0 ? (
+                    <p className="text-sm text-slate-500">暂无文章，先搜索或导入一篇吧。</p>
+                ) : (
+                    <ul className="space-y-2">
+                        {[...articles]
+                            .sort((a, b) => b.fetchedAt - a.fetchedAt)
+                            .map((a) => (
+                                <li
+                                    key={a.id}
+                                    className={cn(
+                                        'flex flex-col gap-2 rounded-xl border border-slate-100 bg-white/80 p-3 sm:flex-row sm:items-center sm:justify-between'
+                                    )}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-slate-800">{a.sourceTitle}</p>
+                                        <p className="text-xs text-slate-500">
+                                            {a.sourceType === 'user_import' ? '用户导入' : '联网精选'} ·{' '}
+                                            {DIFF_LABELS[a.difficulty]}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <select
+                                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                                            value={a.difficulty}
+                                            onChange={(e) =>
+                                                updateDifficulty(a.id, Number(e.target.value) as ReadingDifficulty)
+                                            }
+                                        >
+                                            {([1, 2, 3, 4, 5] as const).map((d) => (
+                                                <option key={d} value={d}>
+                                                    {DIFF_LABELS[d]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <Button type="button" size="sm" onClick={() => setOpenId(a.id)}>
+                                            阅读
+                                        </Button>
+                                        <Button type="button" size="sm" variant="ghost" onClick={() => remove(a.id)}>
+                                            删除
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                    </ul>
+                )}
+            </section>
+
+            <p className="text-[11px] leading-relaxed text-slate-500">
+                搜索 Key 与 DeepSeek Key 均在「设置」中配置；搜索与正文抽取请求发往你在 .env 中配置的
+                VITE_READING_API_BASE（Vercel 等 Serverless）。
+            </p>
+
+            {onNavigateToSettings ? (
+                <Button type="button" variant="outline" className="w-fit" onClick={onNavigateToSettings}>
+                    打开设置
+                </Button>
+            ) : null}
+        </div>
+    );
 }

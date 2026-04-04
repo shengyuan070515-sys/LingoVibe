@@ -7,7 +7,7 @@ import * as React from 'react';
 import { computeLearningStreak, todayKey, totalWeightedEntries } from '@/lib/learning-analytics';
 import { cn } from '@/lib/utils';
 
-export function StatCards() {
+export function StatCards({ layout = 'wide' }: { layout?: 'wide' | 'bento' }) {
     const words = useWordBankStore((s) => s.words);
     const dailyActivity = useLearningAnalyticsStore((s) => s.dailyActivity);
     const backfillActivityFromWords = useLearningAnalyticsStore((s) => s.backfillActivityFromWords);
@@ -44,10 +44,14 @@ export function StatCards() {
 
     const max7 = Math.max(1, ...last7);
 
-    const shell = 'rounded-2xl border-0 bg-white/70 shadow-sm ring-1 ring-slate-100/90 backdrop-blur-sm transition duration-200 hover:bg-white/85 hover:shadow-md';
+    const shell =
+        'rounded-3xl border-0 bg-white/55 shadow-[0_6px_32px_-10px_rgba(15,23,42,0.08)] ring-1 ring-white/80 backdrop-blur-md transition duration-200 hover:bg-white/70 hover:shadow-md';
+
+    const grid =
+        layout === 'bento' ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4 md:grid-cols-2 lg:grid-cols-4';
 
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className={grid}>
             <Card className={cn(shell, 'bg-gradient-to-br from-sky-50/80 to-white/90')}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-slate-600">今日目标</CardTitle>
@@ -60,7 +64,7 @@ export function StatCards() {
                         {dailyCompleted}/{dailyTotal}
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                        活跃度每 +4 点亮 1 格（查词、对话、收录、播客等）
+                        活跃度每 +4 点亮 1 格（查词、对话、收录、阅读等）
                     </p>
                     <Progress value={goalProgress} className="mt-3 h-2 bg-sky-100/80" />
                 </CardContent>

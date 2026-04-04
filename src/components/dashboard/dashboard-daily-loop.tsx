@@ -50,8 +50,8 @@ export function DashboardDailyLoop({ onNavigate }: DashboardDailyLoopProps) {
         },
         {
             key: 'read',
-            label: '完成 1 次播客听读',
-            sub: '在阅读页完成当日任务（后续版本将支持）',
+            label: '完成每日阅读浏览',
+            sub: '在每日阅读中打开任意一篇并读至文末、满足停留时间',
             done: readingDone,
             icon: BookOpen,
             page: 'daily-reading',

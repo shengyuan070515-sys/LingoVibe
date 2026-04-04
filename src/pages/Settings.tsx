@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useLocalStorage, emitLocalStorageSync } from "@/hooks/use-local-storage";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,14 +9,16 @@ import { testWordBankApiKey } from "@/lib/word-utils";
 
 export function SettingsPage() {
     const [chatApiKey, setChatApiKey] = useLocalStorage('chat_api_key', '');
-    const [podcastApiKey, setPodcastApiKey] = useLocalStorage('podcast_api_key', '');
+    const [readingApiKey, setReadingApiKey] = useLocalStorage('reading_api_key', '');
+    const [readingSearchApiKey, setReadingSearchApiKey] = useLocalStorage('reading_search_api_key', '');
     const [unsplashApiKey, setUnsplashApiKey] = useLocalStorage('unsplash_api_key', 'E40fl55KwMFbFkYW-yAaIxPbCAEur8W2MpQIDQm6ZT0');
     const [wordBankApiKey, setWordBankApiKey] = useLocalStorage('wordbank_api_key', '');
     const [displayName, setDisplayName] = useLocalStorage('lingovibe_display_name', '');
     const { refreshMissingDetails } = useWordBankStore();
     
     const [chatInput, setChatInput] = React.useState(chatApiKey);
-    const [podcastInput, setPodcastInput] = React.useState(podcastApiKey);
+    const [readingInput, setReadingInput] = React.useState(readingApiKey);
+    const [readingSearchInput, setReadingSearchInput] = React.useState(readingSearchApiKey);
     const [unsplashInput, setUnsplashInput] = React.useState(unsplashApiKey);
     const [wordBankKeyInput, setWordBankKeyInput] = React.useState(wordBankApiKey);
     const [displayNameInput, setDisplayNameInput] = React.useState(displayName);
@@ -24,6 +26,22 @@ export function SettingsPage() {
     React.useEffect(() => {
         setDisplayNameInput(displayName);
     }, [displayName]);
+
+    React.useEffect(() => {
+        setChatInput(chatApiKey);
+    }, [chatApiKey]);
+    React.useEffect(() => {
+        setReadingInput(readingApiKey);
+    }, [readingApiKey]);
+    React.useEffect(() => {
+        setReadingSearchInput(readingSearchApiKey);
+    }, [readingSearchApiKey]);
+    React.useEffect(() => {
+        setUnsplashInput(unsplashApiKey);
+    }, [unsplashApiKey]);
+    React.useEffect(() => {
+        setWordBankKeyInput(wordBankApiKey);
+    }, [wordBankApiKey]);
     
     const { toast } = useToast();
 
@@ -35,17 +53,17 @@ export function SettingsPage() {
 
     const handleSave = async () => {
         setChatApiKey(chatInput);
-        setPodcastApiKey(podcastInput);
+        setReadingApiKey(readingInput);
+        setReadingSearchApiKey(readingSearchInput);
         setUnsplashApiKey(unsplashInput);
         setWordBankApiKey(wordBankKeyInput);
         toast('所有 API 密钥已成功保存!', 'success');
 
-        // useLocalStorage 写入 localStorage 在 effect 里异步发生。
-        // 生词本补全依赖 localStorage["wordbank_api_key"]，这里先同步落盘，避免用到旧 key。
         try {
             window.localStorage.setItem('wordbank_api_key', JSON.stringify(wordBankKeyInput.trim()));
+            emitLocalStorageSync('wordbank_api_key');
         } catch {
-            // ignore
+            /* ignore */
         }
 
         const test = await testWordBankApiKey(wordBankKeyInput);
@@ -54,7 +72,6 @@ export function SettingsPage() {
             return;
         }
 
-        // Key 通过才触发补全，避免无意义失败请求
         refreshMissingDetails();
     };
 
@@ -104,12 +121,11 @@ export function SettingsPage() {
                         API 密钥管理
                     </CardTitle>
                     <CardDescription>
-                        为了精细化控制成本与权限，请分别为不同模块配置专属的 API Key。
+                        为不同模块分别配置 Key。每日阅读的搜索 Key 会经你部署的 Serverless 转发给搜索服务，不会写进我们的服务器。
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid gap-6">
-                        {/* Chat API Key */}
                         <div className="space-y-2">
                             <label htmlFor="chat-key" className="text-sm font-semibold text-gray-700">
                                 AI 对话专属 Key (DeepSeek)
@@ -124,22 +140,38 @@ export function SettingsPage() {
                             />
                         </div>
 
-                        {/* Podcast API Key */}
                         <div className="space-y-2">
-                            <label htmlFor="podcast-key" className="text-sm font-semibold text-gray-700">
-                                每日播客专属 Key (DeepSeek)
+                            <label htmlFor="reading-key" className="text-sm font-semibold text-gray-700">
+                                每日阅读 · 模型 Key (DeepSeek)
                             </label>
+                            <p className="text-xs text-gray-500">用于翻译、语法分析、难度估计等，与对话 Key 相互独立。</p>
                             <input
-                                id="podcast-key"
+                                id="reading-key"
                                 type="password"
-                                value={podcastInput}
-                                onChange={(e) => setPodcastInput(e.target.value)}
+                                value={readingInput}
+                                onChange={(e) => setReadingInput(e.target.value)}
                                 placeholder="sk-..."
                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                             />
                         </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="reading-search-key" className="text-sm font-semibold text-gray-700">
+                                每日阅读 · 联网搜索 Key（如 Bing Web Search）
+                            </label>
+                            <p className="text-xs text-gray-500">
+                                仅发往你在 .env 中配置的 VITE_READING_API_BASE（Vercel Functions），由服务端调用 Bing，不会在浏览器里直连第三方（除你的部署域名外）。
+                            </p>
+                            <input
+                                id="reading-search-key"
+                                type="password"
+                                value={readingSearchInput}
+                                onChange={(e) => setReadingSearchInput(e.target.value)}
+                                placeholder="Ocp-Apim-Subscription-Key"
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            />
+                        </div>
                         
-                        {/* Unsplash API Key */}
                         <div className="space-y-2">
                             <label htmlFor="unsplash-key" className="text-sm font-semibold text-gray-700 flex items-center justify-between">
                                 视觉查词专属 Key (Unsplash)

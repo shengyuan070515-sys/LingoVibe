@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { fetchWordDetails } from '@/lib/word-utils';
 import { fetchUnsplashImages } from '@/lib/unsplash';
+import { patchWordAfterForgot, patchWordAfterKnow } from '@/lib/srs-utils';
 import { recordWordAdded, recordSrsReviews } from '@/store/learningAnalyticsStore';
+import { useReviewLogStore } from '@/store/reviewLogStore';
 
 export type WordBankSortMode = 'added-desc' | 'added-asc' | 'alpha' | 'review-soon' | 'level-desc';
 
@@ -31,8 +33,9 @@ interface WordBankState {
     refreshMissingDetails: () => Promise<void>;
     updateWord: (id: string, patch: Partial<WordBankItem>) => void;
     removeWord: (id: string) => void;
-    getWordsForPodcast: () => WordBankItem[];
     updateWordProgress: (wordIds: string[]) => void;
+    /** 闪卡自评：纪要 D1a/D2b，仅单词；写复习日志 H2 */
+    applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot') => void;
     clearAllWords: () => void;
     /** 同类型+同词文本去重，可合并缺失字段 */
     dedupeWords: (strategy: 'keep-newest' | 'keep-rich') => number;
@@ -167,7 +170,7 @@ export const useWordBankStore = create<WordBankState>()(
                     console.log("[WordBankStore] 后台补充详情失败，保留基础数据", error);
                 }
 
-                // 播客 / AI 对话等入口通常不带配图：单词卡片在查词后补 Unsplash（无 Key 时也会返回占位图 URL）
+                // 阅读 / AI 对话等入口通常不带配图：单词卡片在查词后补 Unsplash（无 Key 时也会返回占位图 URL）
                 if (itemType === 'word') {
                     try {
                         const imgs = await fetchUnsplashImages(targetWord, { perPage: 3 });
@@ -237,53 +240,37 @@ export const useWordBankStore = create<WordBankState>()(
                 words: state.words.filter((w: WordBankItem) => w.id !== id)
             })),
 
-            getWordsForPodcast: () => {
-                const state = get();
-                const now = Date.now();
-                
-                const dueWords = state.words.filter((w: WordBankItem) => w.type === 'word' && w.nextReviewDate <= now);
-                dueWords.sort((a: WordBankItem, b: WordBankItem) => {
-                    if (a.level !== b.level) return a.level - b.level;
-                    return b.addedAt - a.addedAt;
-                });
-                
-                let selectedWords = dueWords.slice(0, 4);
-                if (selectedWords.length < 4) {
-                    const selectedIds = new Set(selectedWords.map((w: WordBankItem) => w.id));
-                    const remainingWords = state.words
-                        .filter((w: WordBankItem) => w.type === 'word' && !selectedIds.has(w.id))
-                        .sort((a: WordBankItem, b: WordBankItem) => b.addedAt - a.addedAt); 
-                        
-                    const needCount = 4 - selectedWords.length;
-                    selectedWords = [...selectedWords, ...remainingWords.slice(0, needCount)];
-                }
-                
-                return selectedWords;
-            },
-
             updateWordProgress: (wordIds: string[]) => {
                 if (wordIds.length > 0) {
                     recordSrsReviews(wordIds.length);
                 }
+                set((state: WordBankState) => ({
+                    words: state.words.map((w: WordBankItem) =>
+                        wordIds.includes(w.id) ? { ...w, ...patchWordAfterKnow(w) } : w
+                    ),
+                }));
+            },
+
+            applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot') => {
+                recordSrsReviews(1);
                 set((state: WordBankState) => {
-                const now = Date.now();
-                const oneDayMs = 24 * 60 * 60 * 1000;
-                
-                const newWords = state.words.map((w: WordBankItem) => {
-                    if (wordIds.includes(w.id)) {
-                        const newInterval = w.interval === 0 ? 1 : w.interval * 2; 
-                        return {
-                            ...w,
-                            level: w.level + 1,
-                            interval: newInterval,
-                            nextReviewDate: now + (newInterval * oneDayMs)
-                        };
-                    }
-                    return w;
+                    const w = state.words.find((x) => x.id === wordId);
+                    if (!w || w.type !== 'word') return state;
+                    const patch = outcome === 'know' ? patchWordAfterKnow(w) : patchWordAfterForgot();
+                    const levelAfter = outcome === 'know' ? w.level + 1 : 0;
+                    useReviewLogStore.getState().push({
+                        wordId,
+                        word: w.word,
+                        outcome,
+                        levelBefore: w.level,
+                        levelAfter,
+                    });
+                    return {
+                        words: state.words.map((x: WordBankItem) =>
+                            x.id === wordId ? { ...x, ...patch } : x
+                        ),
+                    };
                 });
-                
-                return { words: newWords };
-            });
             },
             
             clearAllWords: () => set({ words: [] }),
