@@ -1,4 +1,7 @@
 import * as React from 'react';
+import type { Components } from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     ArrowLeft,
     BookMarked,
@@ -11,6 +14,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes } from '@/lib/reading-ai';
+import { stripMarkdownInlineLinks } from '@/lib/reading-content-sanitize';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -25,6 +29,32 @@ const DIFF_LABELS: Record<number, string> = {
     3: '中级',
     4: '进阶',
     5: '高阶',
+};
+
+const READING_MARKDOWN_COMPONENTS: Components = {
+    a({ node: _n, children, className, href, ...rest }) {
+        return (
+            <a
+                {...rest}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(className, 'break-words text-teal-700 underline-offset-2 hover:underline')}
+            >
+                {children}
+            </a>
+        );
+    },
+    img({ node: _n, className, alt, ...rest }) {
+        return (
+            <img
+                {...rest}
+                alt={alt ?? ''}
+                loading="lazy"
+                className={cn(className, 'max-h-[min(50vh,420px)] w-auto max-w-full rounded-lg shadow-sm')}
+            />
+        );
+    },
 };
 
 function speakEnglish(text: string) {
@@ -67,6 +97,11 @@ export function ReadingArticleView({
 
     const loggedRef = React.useRef(false);
 
+    const displayBody = React.useMemo(
+        () => stripMarkdownInlineLinks(article?.content ?? ''),
+        [article?.content]
+    );
+
     React.useEffect(() => {
         syncDailyLoopDate();
     }, []);
@@ -79,7 +114,7 @@ export function ReadingArticleView({
         toast('已完成本文浏览要求，今日阅读闭环已更新', 'success');
     }, [toast]);
 
-    const { progressLabel } = useReadingBrowseComplete(scrollRef, article?.content ?? '', onBrowseComplete);
+    const { progressLabel } = useReadingBrowseComplete(scrollRef, displayBody, onBrowseComplete);
 
     const captureSelection = React.useCallback(() => {
         const sel = window.getSelection()?.toString().trim() ?? '';
@@ -116,7 +151,7 @@ export function ReadingArticleView({
         }
         setTransLoading('full');
         try {
-            const chunk = article.content.slice(0, 12000);
+            const chunk = displayBody.slice(0, 12000);
             const zh = await fetchEnglishToChineseTranslation(readingKey.trim(), chunk);
             setFullZh(zh || '（无译文）');
             setFullZhOpen(true);
@@ -251,7 +286,7 @@ export function ReadingArticleView({
                     {grammarLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
                     语法分析（选中）
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => speakEnglish(article.content)}>
+                <Button type="button" size="sm" variant="outline" onClick={() => speakEnglish(displayBody)}>
                     <Volume2 className="mr-1 h-3.5 w-3.5" />
                     朗读全文
                 </Button>
@@ -259,7 +294,7 @@ export function ReadingArticleView({
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => speakEnglish(captureSelection() || article.content)}
+                    onClick={() => speakEnglish(captureSelection() || displayBody)}
                 >
                     朗读选中
                 </Button>
@@ -299,13 +334,31 @@ export function ReadingArticleView({
             <div
                 ref={scrollRef}
                 className={cn(
-                    'max-h-[min(70vh,520px)] overflow-y-auto rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm',
+                    'max-h-[min(70vh,520px)] overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm',
                     'select-text'
                 )}
             >
-                <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-slate-800">
-                    {article.content}
-                </pre>
+                <div
+                    className={cn(
+                        'prose prose-slate max-w-none',
+                        'prose-headings:scroll-mt-4 prose-headings:font-semibold prose-headings:text-slate-800',
+                        'prose-p:text-[15px] prose-p:leading-[1.75] prose-p:text-slate-800 prose-p:break-words',
+                        'prose-li:my-0.5 prose-li:marker:text-slate-400',
+                        'prose-blockquote:border-teal-200 prose-blockquote:text-slate-600',
+                        'prose-code:rounded prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:text-slate-800 prose-code:before:content-none prose-code:after:content-none',
+                        'prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100',
+                        'prose-hr:border-slate-200',
+                        'prose-table:text-sm'
+                    )}
+                >
+                    {displayBody.trim() ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={READING_MARKDOWN_COMPONENTS}>
+                            {displayBody}
+                        </ReactMarkdown>
+                    ) : (
+                        <p className="text-[15px] text-slate-500">暂无正文</p>
+                    )}
+                </div>
             </div>
 
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-center text-sm text-slate-500">
