@@ -298,7 +298,9 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     <p className="mt-4 text-sm text-amber-800/90">
                         精选暂不可用：{featuredError}
                         <span className="mt-1 block text-xs text-slate-500">
-                            请确认已配置 VITE_READING_API_BASE、Tavily、KV，或使用下方联网检索自选文章。
+                            请确认已配置 VITE_READING_API_BASE、TAVILY_API_KEY、KV（KV_REST_API_URL / TOKEN）；本地无 KV
+                            时可设 READING_FEATURED_SKIP_KV=1 并 <code className="rounded bg-slate-100 px-1">vercel dev</code>{' '}
+                            调试。也可用下方联网检索自选文章。
                         </span>
                     </p>
                 ) : featuredItems.length === 0 ? (

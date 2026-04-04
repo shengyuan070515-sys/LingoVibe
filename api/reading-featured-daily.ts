@@ -26,10 +26,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
             return;
         }
-        if (msg.includes('KV') || msg.includes('kv') || msg.includes('REDIS')) {
+        if (
+            msg.includes('KV_ERROR') ||
+            msg.includes('KV_REST') ||
+            msg.includes('UPSTASH') ||
+            msg.includes('Redis') ||
+            msg.includes('REDIS')
+        ) {
             res.status(503).json({
                 error: 'KV not configured',
-                detail: '请配置 Vercel KV / Upstash（KV_REST_API_URL、KV_REST_API_TOKEN）',
+                detail:
+                    '请配置 KV_REST_API_URL、KV_REST_API_TOKEN（Vercel KV / Upstash）。本地可临时设置 READING_FEATURED_SKIP_KV=1 跳过缓存（仅调试，会每次打 Tavily）。',
             });
             return;
         }
