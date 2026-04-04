@@ -1,4 +1,4 @@
-/** 调用自建 Serverless（Bing 搜索 + Jina 抽取），基址由 VITE_READING_API_BASE 提供 */
+/** 调用自建 Serverless（Tavily 搜索 + Jina 抽取），基址由 VITE_READING_API_BASE 提供 */
 
 function apiBase(): string {
     const b = (import.meta.env.VITE_READING_API_BASE as string | undefined)?.trim().replace(/\/$/, '') ?? '';
@@ -7,7 +7,8 @@ function apiBase(): string {
 
 export type SearchHit = { url: string; title: string; snippet: string };
 
-export async function platformSearch(q: string, searchApiKey: string): Promise<SearchHit[]> {
+/** 搜索 Key 由服务端环境变量 TAVILY_API_KEY 提供，前端只传关键词 */
+export async function platformSearch(q: string): Promise<SearchHit[]> {
     const base = apiBase();
     if (!base) {
         throw new Error('未配置 VITE_READING_API_BASE：请部署 api/ 下函数并写入 .env');
@@ -15,7 +16,7 @@ export async function platformSearch(q: string, searchApiKey: string): Promise<S
     const r = await fetch(`${base}/api/reading-search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q, key: searchApiKey }),
+        body: JSON.stringify({ q }),
     });
     if (!r.ok) {
         let msg = `搜索失败 ${r.status}`;

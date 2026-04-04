@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-type BingWebPage = { url?: string; name?: string; snippet?: string };
+/** Tavily Search API：https://api.tavily.com/search */
+type TavilyResult = {
+    title?: string;
+    url?: string;
+    content?: string;
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -19,36 +24,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const q = typeof (body as { q?: unknown }).q === 'string' ? (body as { q: string }).q.trim() : '';
-    const key = typeof (body as { key?: unknown }).key === 'string' ? (body as { key: string }).key.trim() : '';
 
-    if (!q || !key) {
-        res.status(400).json({ error: 'Missing q or key' });
+    if (!q) {
+        res.status(400).json({ error: 'Missing q' });
         return;
     }
 
-    const searchUrl = new URL('https://api.bing.microsoft.com/v7.0/search');
-    searchUrl.searchParams.set('q', q);
-    searchUrl.searchParams.set('count', '10');
-    searchUrl.searchParams.set('mkt', 'en-US');
+    const apiKey = process.env.TAVILY_API_KEY?.trim();
+    if (!apiKey) {
+        res.status(503).json({
+            error: 'Server missing TAVILY_API_KEY',
+            detail: '在 Vercel 项目 Environment Variables 或本地 .env 中配置 TAVILY_API_KEY',
+        });
+        return;
+    }
 
-    const r = await fetch(searchUrl.toString(), {
-        headers: { 'Ocp-Apim-Subscription-Key': key },
+    const r = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            api_key: apiKey,
+            query: q,
+            max_results: 12,
+            search_depth: 'basic',
+            topic: 'general',
+            include_answer: false,
+        }),
     });
 
     if (!r.ok) {
         const t = await r.text();
-        res.status(502).json({ error: 'Search provider error', detail: t.slice(0, 400) });
+        res.status(502).json({ error: 'Tavily request failed', detail: t.slice(0, 500) });
         return;
     }
 
-    const data = (await r.json()) as { webPages?: { value?: BingWebPage[] } };
-    const pages = data?.webPages?.value ?? [];
-    const results = pages
-        .filter((p) => p.url && p.name)
-        .map((p) => ({
-            url: p.url as string,
-            title: p.name as string,
-            snippet: typeof p.snippet === 'string' ? p.snippet : '',
+    const data = (await r.json()) as { results?: TavilyResult[] };
+    const raw = Array.isArray(data.results) ? data.results : [];
+    const results = raw
+        .filter((item) => item.url && item.title)
+        .map((item) => ({
+            url: item.url as string,
+            title: item.title as string,
+            snippet: typeof item.content === 'string' ? item.content.slice(0, 500) : '',
         }));
 
     res.status(200).json({ results });

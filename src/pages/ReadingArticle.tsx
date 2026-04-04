@@ -315,8 +315,8 @@ export function ReadingArticleView({
             </div>
 
             <p className="text-[11px] leading-relaxed text-slate-500">
-                翻译与语法使用你在「设置」中的每日阅读 DeepSeek Key；联网搜索请求经自建 Serverless，Key
-                不在此页展示给第三方。朗读使用浏览器语音合成，文本在本地处理。
+                翻译与语法使用你在「设置」中的每日阅读 DeepSeek Key。联网搜索由 Serverless 使用 Tavily（环境变量
+                TAVILY_API_KEY），不在浏览器暴露。朗读使用浏览器语音合成，文本在本地处理。
             </p>
 
             {!readingKey.trim() && onNavigateToSettings ? (

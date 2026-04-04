@@ -10,7 +10,6 @@ import { testWordBankApiKey } from "@/lib/word-utils";
 export function SettingsPage() {
     const [chatApiKey, setChatApiKey] = useLocalStorage('chat_api_key', '');
     const [readingApiKey, setReadingApiKey] = useLocalStorage('reading_api_key', '');
-    const [readingSearchApiKey, setReadingSearchApiKey] = useLocalStorage('reading_search_api_key', '');
     const [unsplashApiKey, setUnsplashApiKey] = useLocalStorage('unsplash_api_key', 'E40fl55KwMFbFkYW-yAaIxPbCAEur8W2MpQIDQm6ZT0');
     const [wordBankApiKey, setWordBankApiKey] = useLocalStorage('wordbank_api_key', '');
     const [displayName, setDisplayName] = useLocalStorage('lingovibe_display_name', '');
@@ -18,7 +17,6 @@ export function SettingsPage() {
     
     const [chatInput, setChatInput] = React.useState(chatApiKey);
     const [readingInput, setReadingInput] = React.useState(readingApiKey);
-    const [readingSearchInput, setReadingSearchInput] = React.useState(readingSearchApiKey);
     const [unsplashInput, setUnsplashInput] = React.useState(unsplashApiKey);
     const [wordBankKeyInput, setWordBankKeyInput] = React.useState(wordBankApiKey);
     const [displayNameInput, setDisplayNameInput] = React.useState(displayName);
@@ -33,9 +31,6 @@ export function SettingsPage() {
     React.useEffect(() => {
         setReadingInput(readingApiKey);
     }, [readingApiKey]);
-    React.useEffect(() => {
-        setReadingSearchInput(readingSearchApiKey);
-    }, [readingSearchApiKey]);
     React.useEffect(() => {
         setUnsplashInput(unsplashApiKey);
     }, [unsplashApiKey]);
@@ -54,7 +49,6 @@ export function SettingsPage() {
     const handleSave = async () => {
         setChatApiKey(chatInput);
         setReadingApiKey(readingInput);
-        setReadingSearchApiKey(readingSearchInput);
         setUnsplashApiKey(unsplashInput);
         setWordBankApiKey(wordBankKeyInput);
         toast('所有 API 密钥已成功保存!', 'success');
@@ -121,7 +115,8 @@ export function SettingsPage() {
                         API 密钥管理
                     </CardTitle>
                     <CardDescription>
-                        为不同模块分别配置 Key。每日阅读的搜索 Key 会经你部署的 Serverless 转发给搜索服务，不会写进我们的服务器。
+                        为不同模块分别配置 Key。每日阅读的「联网搜索」使用 Tavily，密钥只在 Vercel / 本地 Serverless
+                        环境变量 <code className="rounded bg-slate-100 px-1">TAVILY_API_KEY</code> 中配置，无需在此页填写。
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -155,23 +150,18 @@ export function SettingsPage() {
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label htmlFor="reading-search-key" className="text-sm font-semibold text-gray-700">
-                                每日阅读 · 联网搜索 Key（如 Bing Web Search）
-                            </label>
-                            <p className="text-xs text-gray-500">
-                                仅发往你在 .env 中配置的 VITE_READING_API_BASE（Vercel Functions），由服务端调用 Bing，不会在浏览器里直连第三方（除你的部署域名外）。
+                        <div className="rounded-xl border border-teal-100 bg-teal-50/50 px-4 py-3 text-xs leading-relaxed text-teal-900">
+                            <p className="font-semibold text-teal-950">每日阅读 · Tavily（联网搜索）</p>
+                            <p className="mt-2 text-teal-900/90">
+                                在 Vercel 项目 Settings → Environment Variables 添加{' '}
+                                <code className="rounded bg-white/80 px-1">TAVILY_API_KEY</code>；本地联调时在仓库根目录{' '}
+                                <code className="rounded bg-white/80 px-1">.env</code> 同样配置，并用{' '}
+                                <code className="rounded bg-white/80 px-1">vercel dev</code> 启动 API。前端{' '}
+                                <code className="rounded bg-white/80 px-1">.env</code> 仍需{' '}
+                                <code className="rounded bg-white/80 px-1">VITE_READING_API_BASE</code>。
                             </p>
-                            <input
-                                id="reading-search-key"
-                                type="password"
-                                value={readingSearchInput}
-                                onChange={(e) => setReadingSearchInput(e.target.value)}
-                                placeholder="Ocp-Apim-Subscription-Key"
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            />
                         </div>
-                        
+
                         <div className="space-y-2">
                             <label htmlFor="unsplash-key" className="text-sm font-semibold text-gray-700 flex items-center justify-between">
                                 视觉查词专属 Key (Unsplash)

@@ -38,7 +38,6 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
 
     const [readingKey] = useLocalStorage('reading_api_key', '');
-    const [searchKey] = useLocalStorage('reading_search_api_key', '');
 
     const { toast } = useToast();
 
@@ -59,15 +58,11 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
             toast('请输入关键词或主题', 'error');
             return;
         }
-        if (!searchKey.trim()) {
-            toast('请先在设置中填写联网搜索 API Key（如 Bing）', 'error');
-            return;
-        }
         setSearching(true);
         setHits([]);
         setPicked(new Set());
         try {
-            const list = await platformSearch(q, searchKey.trim());
+            const list = await platformSearch(q);
             setHits(list);
             if (list.length === 0) toast('没有搜索结果，可换关键词重试', 'default');
         } catch (e) {
@@ -323,8 +318,8 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
             </section>
 
             <p className="text-[11px] leading-relaxed text-slate-500">
-                搜索 Key 与 DeepSeek Key 均在「设置」中配置；搜索与正文抽取请求发往你在 .env 中配置的
-                VITE_READING_API_BASE（Vercel 等 Serverless）。
+                联网搜索使用部署端的 Tavily（环境变量 TAVILY_API_KEY）；正文抽取仍经 Serverless。前端需配置
+                VITE_READING_API_BASE。翻译与难度估计使用「设置」中的每日阅读 DeepSeek Key。
             </p>
 
             {onNavigateToSettings ? (
