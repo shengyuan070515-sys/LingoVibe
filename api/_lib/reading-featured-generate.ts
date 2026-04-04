@@ -1,4 +1,4 @@
-import { canonicalizeUrl } from '@/lib/reading-url';
+import { canonicalizeUrl } from '../../src/lib/reading-url.js';
 import { FEATURED_CATEGORIES, urlMatchesCategoryDomains, type FeaturedCategoryDef } from './reading-featured-config.js';
 import { searchTavily, type TavilySearchHit } from './tavily-search.js';
 
