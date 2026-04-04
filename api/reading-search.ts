@@ -1,11 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-/** Tavily Search API：https://api.tavily.com/search */
-type TavilyResult = {
-    title?: string;
-    url?: string;
-    content?: string;
-};
+import { searchTavily } from './lib/tavily-search';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
@@ -39,34 +33,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    const r = await fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            api_key: apiKey,
-            query: q,
-            max_results: 12,
-            search_depth: 'basic',
-            topic: 'general',
-            include_answer: false,
-        }),
-    });
-
-    if (!r.ok) {
-        const t = await r.text();
-        res.status(502).json({ error: 'Tavily request failed', detail: t.slice(0, 500) });
-        return;
+    try {
+        const results = await searchTavily(q, apiKey, 12);
+        res.status(200).json({ results });
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Tavily failed';
+        res.status(502).json({ error: 'Tavily request failed', detail: msg.slice(0, 500) });
     }
-
-    const data = (await r.json()) as { results?: TavilyResult[] };
-    const raw = Array.isArray(data.results) ? data.results : [];
-    const results = raw
-        .filter((item) => item.url && item.title)
-        .map((item) => ({
-            url: item.url as string,
-            title: item.title as string,
-            snippet: typeof item.content === 'string' ? item.content.slice(0, 500) : '',
-        }));
-
-    res.status(200).json({ results });
 }

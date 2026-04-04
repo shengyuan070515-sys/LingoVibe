@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { BookOpen, Loader2, Search, Upload } from 'lucide-react';
+import { BookOpen, Globe, Loader2, Search, Sparkles, Upload } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { platformSearch, platformExtractMarkdown, type SearchHit } from '@/lib/reading-platform-api';
+import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featured-api';
 import { estimateReadingDifficulty } from '@/lib/reading-ai';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,9 @@ const DIFF_LABELS: Record<number, string> = {
     4: '进阶',
     5: '高阶',
 };
+
+const FEATURED_SOURCES_LINE =
+    '精选自《卫报》《经济学人》《自然》《新科学家》《国家地理》《时代周刊》、哈佛商业评论（HBR）、彭博社、NPR、Vox、Aeon、《大西洋月刊》《连线》、麻省理工科技评论等';
 
 export interface DailyReadingPageProps {
     onNavigateToSettings?: () => void;
@@ -51,6 +55,101 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
     const [importBody, setImportBody] = React.useState('');
 
     const [openId, setOpenId] = React.useState<string | null>(null);
+
+    const [featuredItems, setFeaturedItems] = React.useState<FeaturedBundleItem[]>([]);
+    const [featuredDateKey, setFeaturedDateKey] = React.useState<string | null>(null);
+    const [featuredLoading, setFeaturedLoading] = React.useState(true);
+    const [featuredError, setFeaturedError] = React.useState<string | null>(null);
+    const [openingFeaturedUrl, setOpeningFeaturedUrl] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setFeaturedLoading(true);
+            setFeaturedError(null);
+            try {
+                const bundle = await fetchFeaturedDaily();
+                if (!cancelled) {
+                    setFeaturedItems(bundle.items);
+                    setFeaturedDateKey(bundle.dateKey);
+                }
+            } catch (e) {
+                if (!cancelled) {
+                    setFeaturedError(e instanceof Error ? e.message : '精选加载失败');
+                    setFeaturedItems([]);
+                    setFeaturedDateKey(null);
+                }
+            } finally {
+                if (!cancelled) setFeaturedLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const openFeaturedItem = async (item: FeaturedBundleItem) => {
+        if (openingFeaturedUrl) return;
+        if (!readingKey.trim()) {
+            toast('请先在设置中填写每日阅读 DeepSeek Key（用于难度估计）', 'error');
+            return;
+        }
+        setOpeningFeaturedUrl(item.url);
+        try {
+            let md = '';
+            try {
+                md = await platformExtractMarkdown(item.url);
+            } catch {
+                md = '';
+            }
+
+            const slice = md.trim() ? md.slice(0, 800) : item.snippet;
+            let diff: ReadingDifficulty = 3;
+            try {
+                diff = await estimateReadingDifficulty(readingKey.trim(), item.title, slice);
+            } catch {
+                diff = 3;
+            }
+
+            if (md.trim()) {
+                const res = addOrGetByUrl({
+                    url: item.url,
+                    title: item.title,
+                    content: md,
+                    difficulty: diff,
+                });
+                if (res.ok) {
+                    setOpenId(res.id);
+                    if (res.duplicate) toast('已在书库，已打开', 'default');
+                } else if (res.reason === 'empty_content') {
+                    toast('正文为空', 'error');
+                } else {
+                    toast('链接无效', 'error');
+                }
+            } else {
+                const res = addOrGetByUrl({
+                    url: item.url,
+                    title: item.title,
+                    content: '',
+                    difficulty: diff,
+                    summaryOnly: true,
+                    summaryText: item.snippet.trim() || '（暂无法抓取正文，请以官网为准。）',
+                });
+                if (res.ok) {
+                    setOpenId(res.id);
+                    if (res.duplicate) toast('已在书库，已打开', 'default');
+                } else if (res.reason === 'empty_content') {
+                    toast('无法创建摘要条目', 'error');
+                } else {
+                    toast('链接无效', 'error');
+                }
+            }
+        } catch (e) {
+            toast(e instanceof Error ? e.message : '打开失败', 'error');
+        } finally {
+            setOpeningFeaturedUrl(null);
+        }
+    };
 
     const runSearch = async () => {
         const q = query.trim();
@@ -176,6 +275,69 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     联网搜索后勾选入库，或粘贴/导入文本。打开文章后滚动至文末并满足停留时间，即可计入今日阅读闭环。
                 </p>
             </div>
+
+            <section className="rounded-2xl border border-teal-100/80 bg-gradient-to-b from-teal-50/40 to-white/90 p-4 shadow-sm ring-1 ring-teal-100/60 backdrop-blur-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <Sparkles className="h-4 w-4 text-teal-600" />
+                        AI 每日精选外刊
+                    </h2>
+                    {featuredDateKey ? (
+                        <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-teal-800 ring-1 ring-teal-100">
+                            今日 {featuredDateKey}
+                        </span>
+                    ) : null}
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">{FEATURED_SOURCES_LINE}</p>
+                {featuredLoading ? (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
+                        正在加载今日推荐…
+                    </div>
+                ) : featuredError ? (
+                    <p className="mt-4 text-sm text-amber-800/90">
+                        精选暂不可用：{featuredError}
+                        <span className="mt-1 block text-xs text-slate-500">
+                            请确认已配置 VITE_READING_API_BASE、Tavily、KV，或使用下方联网检索自选文章。
+                        </span>
+                    </p>
+                ) : featuredItems.length === 0 ? (
+                    <p className="mt-4 text-sm text-slate-500">今日暂无推荐条目，请稍后再试或使用联网检索。</p>
+                ) : (
+                    <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {featuredItems.map((item) => (
+                            <li
+                                key={`${item.categoryId}-${item.url}`}
+                                className="flex flex-col rounded-xl border border-slate-100/90 bg-white/90 p-3 shadow-sm"
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                                        {item.categoryLabelZh}
+                                    </span>
+                                </div>
+                                <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-slate-800">{item.title}</p>
+                                {item.snippet ? (
+                                    <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-600">{item.snippet}</p>
+                                ) : null}
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="mt-3 w-full gap-1 bg-teal-600 text-white hover:bg-teal-700"
+                                    disabled={!!openingFeaturedUrl}
+                                    onClick={() => void openFeaturedItem(item)}
+                                >
+                                    {openingFeaturedUrl === item.url ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Globe className="h-3.5 w-3.5" />
+                                    )}
+                                    阅读原文
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
 
             <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">

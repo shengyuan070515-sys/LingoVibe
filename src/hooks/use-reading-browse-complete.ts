@@ -7,12 +7,16 @@ import { equivalentWordCountForMixedText, minDwellSecondsForBrowse } from '@/lib
 export function useReadingBrowseComplete(
     scrollRootRef: React.RefObject<HTMLElement | null>,
     content: string,
-    onComplete: () => void
+    onComplete: () => void,
+    options?: { summaryMode?: boolean }
 ) {
-    const requiredMs = React.useMemo(
-        () => minDwellSecondsForBrowse(equivalentWordCountForMixedText(content)) * 1000,
-        [content]
-    );
+    const requiredMs = React.useMemo(() => {
+        let sec = minDwellSecondsForBrowse(equivalentWordCountForMixedText(content));
+        if (options?.summaryMode) {
+            sec = Math.max(12, Math.min(sec, 28));
+        }
+        return sec * 1000;
+    }, [content, options?.summaryMode]);
 
     const reachedEndRef = React.useRef(false);
     const visibleMsRef = React.useRef(0);

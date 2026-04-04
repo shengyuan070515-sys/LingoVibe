@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { canonicalizeUrl } from '@/lib/reading-url';
 
@@ -13,11 +13,14 @@ export interface ReadingArticle {
     fetchedAt: number;
     difficulty: ReadingDifficulty;
     sourceType: ReadingSourceType;
+    /** 正文抽取失败（如付费墙）：仅展示摘要 + 官网按钮 */
+    summaryOnly?: boolean;
+    summaryText?: string;
 }
 
 export type AddOrGetByUrlResult =
     | { ok: true; id: string; duplicate: boolean }
-    | { ok: false; reason: 'invalid_url' };
+    | { ok: false; reason: 'invalid_url' | 'empty_content' };
 
 interface ReadingLibraryState {
     articles: ReadingArticle[];
@@ -26,6 +29,8 @@ interface ReadingLibraryState {
         title: string;
         content: string;
         difficulty: ReadingDifficulty;
+        summaryOnly?: boolean;
+        summaryText?: string;
     }) => AddOrGetByUrlResult;
     addUserImport: (input: {
         title: string;
@@ -53,6 +58,10 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                 if (canonical === null) {
                     return { ok: false, reason: 'invalid_url' };
                 }
+                const summaryOnly = input.summaryOnly === true;
+                if (!summaryOnly && !input.content.trim()) {
+                    return { ok: false, reason: 'empty_content' };
+                }
                 const existing = get().articles.find((a) => a.canonicalUrl === canonical);
                 if (existing) {
                     return { ok: true, id: existing.id, duplicate: true };
@@ -66,6 +75,8 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     fetchedAt: Date.now(),
                     difficulty: input.difficulty,
                     sourceType: 'web_curated',
+                    summaryOnly: summaryOnly || undefined,
+                    summaryText: input.summaryText?.trim() || undefined,
                 };
                 set((state) => ({ articles: [...state.articles, article] }));
                 return { ok: true, id, duplicate: false };
@@ -96,7 +107,8 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
         }),
         {
             name: 'lingovibe_reading_library',
-            version: 1,
+            version: 2,
+            migrate: (persisted) => persisted,
             storage: createJSONStorage(() => localStorage),
         },
     ),

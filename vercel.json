@@ -2,7 +2,13 @@
   "functions": {
     "api/**/*.ts": {
       "memory": 256,
-      "maxDuration": 30
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/reading-featured-cron",
+      "schedule": "5 16 * * *"
+    }
+  ]
 }

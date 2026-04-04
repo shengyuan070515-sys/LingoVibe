@@ -97,10 +97,14 @@ export function ReadingArticleView({
 
     const loggedRef = React.useRef(false);
 
-    const displayBody = React.useMemo(
-        () => stripMarkdownInlineLinks(article?.content ?? ''),
-        [article?.content]
-    );
+    const summaryMode = !!(article?.summaryOnly && article?.summaryText?.trim());
+
+    const displayBody = React.useMemo(() => {
+        if (summaryMode && article?.summaryText) {
+            return stripMarkdownInlineLinks(article.summaryText.trim());
+        }
+        return stripMarkdownInlineLinks(article?.content ?? '');
+    }, [article?.content, article?.summaryText, summaryMode]);
 
     React.useEffect(() => {
         syncDailyLoopDate();
@@ -114,7 +118,9 @@ export function ReadingArticleView({
         toast('已完成本文浏览要求，今日阅读闭环已更新', 'success');
     }, [toast]);
 
-    const { progressLabel } = useReadingBrowseComplete(scrollRef, displayBody, onBrowseComplete);
+    const { progressLabel } = useReadingBrowseComplete(scrollRef, displayBody, onBrowseComplete, {
+        summaryMode,
+    });
 
     const captureSelection = React.useCallback(() => {
         const sel = window.getSelection()?.toString().trim() ?? '';
@@ -351,7 +357,24 @@ export function ReadingArticleView({
                         'prose-table:text-sm'
                     )}
                 >
-                    {displayBody.trim() ? (
+                    {summaryMode ? (
+                        <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 p-4 shadow-sm not-prose">
+                            <p className="text-[13px] font-semibold text-amber-950">核心摘要</p>
+                            <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-amber-950/95">
+                                {displayBody}
+                            </p>
+                            {article.canonicalUrl ? (
+                                <a
+                                    href={article.canonicalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-4 flex w-full items-center justify-center rounded-xl bg-teal-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:bg-teal-700"
+                                >
+                                    原文有付费墙限制，已为您提取核心摘要。想看全文请点此去官网。
+                                </a>
+                            ) : null}
+                        </div>
+                    ) : displayBody.trim() ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READING_MARKDOWN_COMPONENTS}>
                             {displayBody}
                         </ReactMarkdown>
