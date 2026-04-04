@@ -35,10 +35,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             className={cn(
-              "pointer-events-auto flex min-w-[300px] items-center justify-between gap-4 rounded-xl px-5 py-3.5 text-sm font-semibold shadow-2xl border animate-in slide-in-from-top-4 fade-in duration-300",
-              t.type === "default" && "bg-white text-gray-900 border-gray-200",
-              t.type === "success" && "bg-green-50 text-green-800 border-green-100",
-              t.type === "error" && "bg-red-50 text-red-800 border-red-100"
+              "pointer-events-auto flex min-w-[300px] items-center justify-between gap-4 rounded-2xl border px-5 py-3.5 text-sm font-semibold shadow-lg shadow-slate-900/10 backdrop-blur-xl backdrop-saturate-150 animate-in slide-in-from-top-4 fade-in duration-300",
+              t.type === "default" && "border-white/70 bg-white/82 text-slate-800",
+              t.type === "success" && "border-emerald-200/60 bg-emerald-50/85 text-emerald-900",
+              t.type === "error" && "border-red-200/60 bg-red-50/85 text-red-900"
             )}
           >
             <span className="flex-1">{t.message}</span>

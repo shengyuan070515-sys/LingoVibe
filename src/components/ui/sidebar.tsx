@@ -41,8 +41,8 @@ export const Sidebar = ({ children, className }: { children: React.ReactNode, cl
   return (
     <aside
       className={cn(
-        // 移动端抽屉在遮罩之上；桌面 sticky
-        "fixed inset-y-0 left-0 z-[100] flex h-[100dvh] min-h-0 w-[min(16rem,88vw)] shrink-0 flex-col border-r bg-white shadow-xl transition-transform duration-300 md:w-64 md:shadow-none",
+        // 移动端抽屉在遮罩之上；桌面 sticky；与首页统一的磨砂玻璃
+        "fixed inset-y-0 left-0 z-[100] flex h-[100dvh] min-h-0 w-[min(16rem,88vw)] shrink-0 flex-col border-r border-white/60 bg-white/78 shadow-xl shadow-slate-900/8 backdrop-blur-xl backdrop-saturate-150 transition-transform duration-300 md:w-64 md:shadow-none",
         "md:sticky md:top-0 md:self-start md:translate-x-0",
         !open && "-translate-x-full",
         className
@@ -61,7 +61,7 @@ export const SidebarInset = ({ children, className }: { children: React.ReactNod
                 <button
                     type="button"
                     aria-label="关闭菜单"
-                    className="fixed inset-0 z-[90] cursor-default border-0 bg-black/45 p-0 backdrop-blur-[1px]"
+                    className="fixed inset-0 z-[90] cursor-default border-0 bg-slate-900/35 p-0 backdrop-blur-md backdrop-saturate-150"
                     onClick={() => setOpen(false)}
                 />
             )}
@@ -85,20 +85,22 @@ export const SidebarTrigger = ({ className }: { className?: string }) => {
   );
 };
 
-export const SidebarHeader = ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={cn("flex h-14 items-center border-b px-4 lg:h-16", className)}>{children}</div>;
+export const SidebarHeader = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={cn("flex h-14 items-center border-b border-white/50 bg-white/30 px-4 backdrop-blur-md lg:h-16", className)}>{children}</div>
+);
 export const SidebarContent = ({ children, className }: { children: React.ReactNode, className?: string }) => (
   <div className={cn("min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4", className)}>{children}</div>
 );
-export const SidebarFooter = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <div className={cn("mt-auto shrink-0 border-t bg-white p-4", className)}>{children}</div>
+export const SidebarFooter = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={cn("mt-auto shrink-0 border-t border-white/50 bg-white/35 p-4 backdrop-blur-md", className)}>{children}</div>
 );
 export const SidebarMenu = ({ children }: { children: React.ReactNode }) => <ul className="flex flex-col gap-1">{children}</ul>;
 export const SidebarMenuItem = ({ children }: { children: React.ReactNode }) => <li>{children}</li>;
 export const SidebarMenuButton = ({ children, className, active, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) => (
     <button
       className={cn(
-        "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium leading-none transition-colors hover:bg-gray-100",
-        active && "bg-gray-100 text-gray-900",
+        "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium leading-none text-slate-700 transition-colors hover:bg-white/55 hover:backdrop-blur-sm",
+        active && "bg-white/65 text-slate-900 shadow-sm ring-1 ring-white/70 backdrop-blur-md",
         className
       )}
       {...props}

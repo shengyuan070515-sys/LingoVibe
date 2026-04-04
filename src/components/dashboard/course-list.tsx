@@ -4,7 +4,7 @@ import {
   Mic, 
   Book, 
   Globe, 
-  Star, 
+  Star,
   Play, 
   Clock,
   LayoutGrid,
@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
+import { FavoriteStarBurstButton } from "@/components/ui/favorite-burst-button"
 
 interface Course {
   id: string
@@ -115,20 +116,15 @@ export function CourseList({ courses: initialCourses }: CourseListProps) {
                         <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
                           {course.title}
                         </h3>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-8 w-8 rounded-full",
-                            isFavorite ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
-                          )}
+                        <FavoriteStarBurstButton
+                          active={isFavorite}
+                          variant="amber"
+                          className="h-8 w-8 hover:bg-slate-100/80"
                           onClick={(e) => {
                             e.preventDefault()
                             toggleFavorite(course.id)
                           }}
-                        >
-                          <Star className="h-5 w-5" />
-                        </Button>
+                        />
                       </div>
                       <p className="text-sm text-gray-500 line-clamp-2 mb-4">
                         {course.description}

@@ -1,5 +1,7 @@
 import * as React from 'react';
+import { motion } from 'framer-motion';
 import { Send, Mic, Loader2, Languages, Plus, MessageSquare, Trash2, MoreVertical, Pencil, BookOpen, Coffee, Sparkles, Menu } from 'lucide-react';
+import { WordCollectParticleBurst } from '@/components/ui/favorite-burst-button';
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useWordBankStore } from "@/store/wordBankStore";
 import {
@@ -15,6 +17,7 @@ import {
 } from '@/lib/ai-chat';
 import { cn } from '@/lib/utils';
 import { recordChatMessage } from '@/store/learningAnalyticsStore';
+import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,6 +36,11 @@ export interface FavoriteItem {
 export function AiChatPage() {
     const [apiKey] = useLocalStorage('chat_api_key', '');
     const { addWord } = useWordBankStore();
+    const markChatRoundDone = useDailyLoopStore((s) => s.markChatRoundDone);
+
+    React.useEffect(() => {
+        syncDailyLoopDate();
+    }, []);
     const [persisted, setPersisted] = useLocalStorage<AiChatPersistedState>(
         'ai_chat_v2',
         migrateLegacyChatSessionsIfNeeded()
@@ -100,6 +108,7 @@ export function AiChatPage() {
     const [input, setInput] = React.useState('');
     const [isLoading, setIsLoading] = React.useState(false);
     const [isCompletingWord, setIsCompletingWord] = React.useState(false);
+    const [wordSaveBurstKey, setWordSaveBurstKey] = React.useState(0);
     const [sessionDrawerOpen, setSessionDrawerOpen] = React.useState(false);
 
     const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -296,16 +305,29 @@ export function AiChatPage() {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
                     model: 'deepseek-chat',
+                    temperature: 0.6,
                     messages: [emmaSystemPrompt, ...messagesForApi.map((m) => ({ role: m.role, content: m.content }))],
                 })
             });
 
-            if (!response.ok) throw new Error(`API request failed`);
+            if (!response.ok) {
+                let errMsg = `请求失败 ${response.status}`;
+                try {
+                    const errBody = await response.json();
+                    errMsg = errBody?.error?.message || errBody?.message || errMsg;
+                } catch {
+                    /* ignore */
+                }
+                throw new Error(errMsg);
+            }
 
             const data = await response.json();
-            const rawContent = data.choices[0].message.content;
+            const rawContent = data?.choices?.[0]?.message?.content;
+            if (typeof rawContent !== 'string' || !rawContent.trim()) {
+                throw new Error('接口未返回有效内容，请稍后重试');
+            }
             const { correction, content, translation } = parseEmmaResponse(rawContent);
-            
+
             const assistantMessage = { role: 'assistant' as const, correction, content, translation, showTranslation: false };
             
             setPersisted((p) => {
@@ -323,10 +345,12 @@ export function AiChatPage() {
                     },
                 };
             });
+            markChatRoundDone();
 
         } catch (error) {
             console.error(error);
-            toast("连接失败，请检查 API Key 或网络", "error");
+            const msg = error instanceof Error ? error.message : '连接失败，请检查 API Key 或网络';
+            toast(msg, 'error');
         } finally {
             setIsLoading(false);
         }
@@ -335,6 +359,9 @@ export function AiChatPage() {
     const toggleTranslation = async (messageIndex: number) => {
         if (!currentSession || !currentSessionId) return;
         const targetMessage = currentSession.messages[messageIndex];
+        if (!targetMessage) return;
+        /** 异步完成后用内容定位消息，避免 localStorage 同步导致下标错位把翻译贴到别的气泡上 */
+        const targetFingerprint = { role: targetMessage.role, content: targetMessage.content };
         
         // 如果已经显示翻译，则直接切换隐藏
         if (targetMessage.showTranslation) {
@@ -371,16 +398,17 @@ export function AiChatPage() {
                             },
                             { 
                                 role: 'user', 
-                                content: targetMessage.content 
+                                content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${targetMessage.content}` 
                             }
                         ],
-                        max_tokens: 300
+                        max_tokens: 300,
+                        temperature: 0.2,
                     })
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    const translation = data.choices[0].message.content.trim();
+                    const translation = (data?.choices?.[0]?.message?.content ?? '').trim();
                     
                     setPersisted((p) => {
                         const mode = p.chatMode;
@@ -393,8 +421,9 @@ export function AiChatPage() {
                                     s.id === sid
                                         ? {
                                               ...s,
-                                              messages: s.messages.map((msg, i) =>
-                                                  i === messageIndex
+                                              messages: s.messages.map((msg) =>
+                                                  msg.role === targetFingerprint.role &&
+                                                  msg.content === targetFingerprint.content
                                                       ? { ...msg, translation, isTranslating: false }
                                                       : msg
                                               ),
@@ -410,10 +439,30 @@ export function AiChatPage() {
                 }
             } catch (error) {
                 console.error('Full translation error:', error);
-                const errorMessages = currentSession.messages.map((msg, i) => 
-                    i === messageIndex ? { ...msg, isTranslating: false, translation: '翻译失败，请重试。' } : msg
-                );
-                updateSession(currentSessionId, { messages: errorMessages });
+                setPersisted((p) => {
+                    const mode = p.chatMode;
+                    const sid = p.currentSessionIdByMode[mode];
+                    return {
+                        ...p,
+                        sessionsByMode: {
+                            ...p.sessionsByMode,
+                            [mode]: p.sessionsByMode[mode].map((s) =>
+                                s.id === sid
+                                    ? {
+                                          ...s,
+                                          messages: s.messages.map((msg) =>
+                                              msg.role === targetFingerprint.role &&
+                                              msg.content === targetFingerprint.content
+                                                  ? { ...msg, isTranslating: false, translation: '翻译失败，请重试。' }
+                                                  : msg
+                                          ),
+                                          updatedAt: Date.now(),
+                                      }
+                                    : s
+                            ),
+                        },
+                    };
+                });
             }
         } else {
             // 已有翻译，直接显示
@@ -610,7 +659,8 @@ export function AiChatPage() {
             exampleSentence: aiInfo?.example || '',
         });
         toast(`已添加到生词本${text.split(/\s+/).length <= 3 ? '单词' : '句子'}: ${text}`, "success");
-        
+        setWordSaveBurstKey((k) => k + 1);
+
         setIsCompletingWord(false);
     };
 
@@ -653,19 +703,25 @@ export function AiChatPage() {
                                 )}
                             </div>
                         </div>
-                        <button 
-                            onClick={handleSaveSelection}
-                            disabled={isCompletingWord}
-                            className={cn(
-                                "flex w-full items-center justify-center gap-1.5 border-t border-white/50 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors dark:border-white/[0.08]",
-                                isCompletingWord
-                                    ? "cursor-not-allowed bg-slate-100/50 text-slate-300 dark:bg-slate-800/40 dark:text-slate-600"
-                                    : "bg-white/40 text-slate-600 hover:bg-indigo-50/80 hover:text-indigo-700 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300"
-                            )}
-                        >
-                            {isCompletingWord ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
-                            {isCompletingWord ? '保存中…' : '加入生词本'}
-                        </button>
+                        <div className="relative border-t border-white/50 dark:border-white/[0.08]">
+                            <motion.button
+                                type="button"
+                                onClick={handleSaveSelection}
+                                disabled={isCompletingWord}
+                                whileTap={isCompletingWord ? undefined : { scale: 0.985 }}
+                                transition={{ type: 'spring', stiffness: 520, damping: 32 }}
+                                className={cn(
+                                    'relative z-0 flex w-full items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                                    isCompletingWord
+                                        ? 'cursor-not-allowed bg-slate-100/50 text-slate-300 dark:bg-slate-800/40 dark:text-slate-600'
+                                        : 'bg-white/40 text-slate-600 hover:bg-indigo-50/80 hover:text-indigo-700 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300'
+                                )}
+                            >
+                                {isCompletingWord ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+                                {isCompletingWord ? '保存中…' : '加入生词本'}
+                            </motion.button>
+                            <WordCollectParticleBurst burstKey={wordSaveBurstKey} />
+                        </div>
                     </div>
                 </div>
             )}
@@ -892,7 +948,10 @@ export function AiChatPage() {
                                     </div>
                                 )}
                                 {currentSession.messages.map((msg, index) => (
-                                    <div key={index} className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                                    <div
+                                        key={`${index}-${msg.role}-${msg.content?.slice(0, 40) ?? ''}`}
+                                        className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
+                                    >
                                         <Avatar className={cn('mt-0.5 shrink-0 border-2 border-white shadow-md dark:border-slate-700', msg.role === 'assistant' ? 'h-10 w-10' : 'h-9 w-9')}>
                                             {msg.role === 'assistant' ? (
                                                 <><AvatarImage src={emmaAvatar} /><AvatarFallback className="bg-indigo-600 text-[10px] text-white">EM</AvatarFallback></>
