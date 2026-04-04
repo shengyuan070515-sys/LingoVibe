@@ -7,7 +7,7 @@ import {
     BookMarked,
     Flame,
     MessageCircle,
-    Mic2,
+    BookOpen,
     Search,
     Sparkles,
     Star,
@@ -25,7 +25,7 @@ interface BadgeDef {
         wordCount: number;
         streak: number;
         activeDays: number;
-        life: { chatMessages: number; visualLookups: number; podcastSessions: number; srsReviews: number };
+        life: { chatMessages: number; visualLookups: number; readingSessions: number; srsReviews: number };
     }) => boolean;
 }
 
@@ -87,11 +87,11 @@ const BADGES: BadgeDef[] = [
         unlocked: ({ life }) => life.visualLookups >= 10,
     },
     {
-        id: 'podcast-1',
+        id: 'reading-1',
         title: '声临其境',
-        description: '完成 1 次每日播客复习',
-        icon: Mic2,
-        unlocked: ({ life }) => life.podcastSessions >= 1,
+        description: '完成 1 次每日阅读复习',
+        icon: BookOpen,
+        unlocked: ({ life }) => life.readingSessions >= 1,
     },
     {
         id: 'srs-20',

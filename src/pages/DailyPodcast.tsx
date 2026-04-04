@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Play, Pause, RotateCcw, SkipForward, Loader2, Mic2, Mic, Headphones, Sparkles, Settings as SettingsIcon, AlertCircle, Quote, X, Check, Languages, Star, Trash2, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Loader2, Mic2, Mic, Headphones, Sparkles, Settings as SettingsIcon, AlertCircle, Quote, X, Check, Languages, Trash2, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FavoriteStarBurstButton } from '@/components/ui/favorite-burst-button';
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 
 import { useWordBankStore } from "@/store/wordBankStore";
-import { recordPodcastSession } from "@/store/learningAnalyticsStore";
+import { recordReadingSession } from "@/store/learningAnalyticsStore";
+import { useDailyLoopStore, syncDailyLoopDate } from "@/store/dailyLoopStore";
 
 interface DailyPodcastProps {
     onNavigateToSettings?: () => void;
@@ -50,11 +52,16 @@ type SavedPodcast = {
 
 export function DailyPodcastPage({ onNavigateToSettings }: DailyPodcastProps) {
     const { addWord, words, getWordsForPodcast, updateWordProgress } = useWordBankStore();
+    const markReadingDone = useDailyLoopStore((s) => s.markReadingDone);
     const [apiKey] = useLocalStorage('podcast_api_key', '');
     const [savedPodcasts, setSavedPodcasts] = useLocalStorage<SavedPodcast[]>('saved_podcasts', []);
     const [currentPodcastSession, setCurrentPodcastSession] = useLocalStorage<PodcastSession | null>('currentPodcastSession', null);
     
     const { toast } = useToast();
+
+    React.useEffect(() => {
+        syncDailyLoopDate();
+    }, []);
 
     const [story, setStory] = React.useState("");
     const [chineseTranslation, setChineseTranslation] = React.useState("");
@@ -530,7 +537,8 @@ CRITICAL FORMATTING RULE: Do NOT use any Markdown formatting (like **asterisks**
 
     // 完成本次复习逻辑
     const handleCompleteSession = () => {
-        recordPodcastSession();
+        recordReadingSession();
+        markReadingDone();
         if (masteredWords.length > 0) {
             // 根据 targetWords 和 masteredWords 找到对应的 word ID
             const wordsToReview = getWordsForPodcast();
@@ -594,8 +602,8 @@ CRITICAL FORMATTING RULE: Do NOT use any Markdown formatting (like **asterisks**
                 <span
                     key={idx}
                     className={cn(
-                        "inline-block px-0.5 rounded-sm",
-                        isTarget ? "text-amber-600 font-bold" : "text-stone-700"
+                        'inline-block px-0.5 rounded-sm',
+                        isTarget ? 'font-bold text-amber-600' : 'text-stone-700'
                     )}
                 >
                     {piece}
@@ -641,24 +649,29 @@ CRITICAL FORMATTING RULE: Do NOT use any Markdown formatting (like **asterisks**
 
             const flashTap = wordTapFlashIdx === idx && !isHighlighted;
 
+            /** 仅清除系统选区，减轻双击收录后的灰条/选中残留；不改布局、不用 preventDefault，避免影响换行与正文显示 */
+            const clearNativeSelectionSoon = () => {
+                window.requestAnimationFrame(() => window.getSelection()?.removeAllRanges());
+            };
+
             return (
-                <span 
+                <span
                     key={idx}
                     onClick={() => {
-                        // 目标词：单击即可添加到生词本
                         if (isTarget) {
                             handleAddPodcastWord(word);
                             setWordTapFlashIdx(idx);
+                            clearNativeSelectionSoon();
                             window.setTimeout(() => {
                                 setWordTapFlashIdx((cur) => (cur === idx ? null : cur));
                             }, 700);
                         }
                     }}
                     onDoubleClick={() => {
-                        // 任意单词：双击添加，避免误触
                         if (isToken) {
                             handleAddPodcastWord(word);
                             setWordTapFlashIdx(idx);
+                            clearNativeSelectionSoon();
                             window.setTimeout(() => {
                                 setWordTapFlashIdx((cur) => (cur === idx ? null : cur));
                             }, 700);
@@ -666,10 +679,10 @@ CRITICAL FORMATTING RULE: Do NOT use any Markdown formatting (like **asterisks**
                     }}
                     title={
                         isTarget
-                            ? "点击添加到生词本"
+                            ? '点击添加到生词本'
                             : isToken
-                                ? "双击添加到生词本"
-                                : undefined
+                              ? '双击添加到生词本'
+                              : undefined
                     }
                     className={cn(
                         'inline-block rounded-md px-0.5 py-0.5 transition-all duration-200',
@@ -973,24 +986,22 @@ CRITICAL FORMATTING RULE: Do NOT use any Markdown formatting (like **asterisks**
                                     {renderWordTrackingStory()}
                                 </div>
                                 {!isLoading && story && (
-                                    <button
-                                        type="button"
-                                        onClick={handleSavePodcast}
-                                        className={cn(
-                                            'self-end rounded-full p-2.5 transition-all group sm:mt-1 sm:self-start sm:shrink-0 sm:p-2',
-                                            isCurrentSaved
-                                                ? 'bg-amber-50 text-amber-500'
-                                                : 'text-stone-300 hover:bg-amber-50 hover:text-amber-500'
-                                        )}
+                                    <FavoriteStarBurstButton
+                                        active={isCurrentSaved}
+                                        variant="amber"
                                         title="收藏至日记"
-                                    >
-                                        <Star
-                                            className={cn(
-                                                'h-6 w-6 sm:h-6',
-                                                isCurrentSaved ? 'fill-current' : 'group-hover:fill-current'
-                                            )}
-                                        />
-                                    </button>
+                                        className={cn(
+                                            'self-end sm:mt-1 sm:self-start sm:shrink-0',
+                                            isCurrentSaved
+                                                ? 'bg-amber-50/90 text-amber-500'
+                                                : 'text-stone-300 hover:bg-amber-50/90 hover:text-amber-500'
+                                        )}
+                                        starClassName="h-6 w-6"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleSavePodcast();
+                                        }}
+                                    />
                                 )}
                             </div>
                             

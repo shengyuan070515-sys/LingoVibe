@@ -6,14 +6,14 @@ export type ActivityEvent =
     | 'word_added'
     | 'chat_message'
     | 'visual_lookup'
-    | 'podcast_session'
+    | 'reading_session'
     | 'srs_review';
 
 const EVENT_WEIGHT: Record<ActivityEvent, number> = {
     word_added: 3,
     chat_message: 2,
     visual_lookup: 2,
-    podcast_session: 5,
+    reading_session: 5,
     srs_review: 2,
 };
 
@@ -27,6 +27,12 @@ interface LearningAnalyticsState {
     backfillActivityFromWords: (words: { addedAt: number }[]) => void;
 }
 
+type PersistedAnalyticsV1 = {
+    dailyActivity?: Record<string, number>;
+    lifetime?: LifetimeCounters & { podcastSessions?: number };
+    backfillFromWordsDone?: boolean;
+};
+
 export const useLearningAnalyticsStore = create<LearningAnalyticsState>()(
     persist(
         (set, get) => ({
@@ -35,7 +41,7 @@ export const useLearningAnalyticsStore = create<LearningAnalyticsState>()(
                 wordsAdded: 0,
                 chatMessages: 0,
                 visualLookups: 0,
-                podcastSessions: 0,
+                readingSessions: 0,
                 srsReviews: 0,
             },
             backfillFromWordsDone: false,
@@ -49,7 +55,7 @@ export const useLearningAnalyticsStore = create<LearningAnalyticsState>()(
                     if (event === 'word_added') life.wordsAdded += amount;
                     if (event === 'chat_message') life.chatMessages += amount;
                     if (event === 'visual_lookup') life.visualLookups += amount;
-                    if (event === 'podcast_session') life.podcastSessions += amount;
+                    if (event === 'reading_session') life.readingSessions += amount;
                     if (event === 'srs_review') life.srsReviews += amount;
                     return { dailyActivity, lifetime: life };
                 });
@@ -79,8 +85,27 @@ export const useLearningAnalyticsStore = create<LearningAnalyticsState>()(
         }),
         {
             name: 'lingovibe_learning_analytics',
-            version: 1,
+            version: 2,
             storage: createJSONStorage(() => localStorage),
+            migrate: (persistedState, version) => {
+                if (version >= 2) return persistedState as PersistedAnalyticsV1;
+                const ps = persistedState as PersistedAnalyticsV1;
+                const lt = ps.lifetime;
+                if (!lt) return persistedState as PersistedAnalyticsV1;
+                const legacy = lt as LifetimeCounters & { podcastSessions?: number };
+                const readingSessions = legacy.readingSessions ?? legacy.podcastSessions ?? 0;
+                const { podcastSessions: _drop, ...restLt } = legacy;
+                return {
+                    ...ps,
+                    lifetime: {
+                        wordsAdded: restLt.wordsAdded ?? 0,
+                        chatMessages: restLt.chatMessages ?? 0,
+                        visualLookups: restLt.visualLookups ?? 0,
+                        srsReviews: restLt.srsReviews ?? 0,
+                        readingSessions,
+                    },
+                };
+            },
         }
     )
 );
@@ -97,8 +122,8 @@ export function recordVisualLookup(): void {
     useLearningAnalyticsStore.getState().recordEvent('visual_lookup', 1);
 }
 
-export function recordPodcastSession(): void {
-    useLearningAnalyticsStore.getState().recordEvent('podcast_session', 1);
+export function recordReadingSession(): void {
+    useLearningAnalyticsStore.getState().recordEvent('reading_session', 1);
 }
 
 export function recordSrsReviews(count: number): void {

@@ -88,7 +88,7 @@ export interface LifetimeCounters {
     wordsAdded: number;
     chatMessages: number;
     visualLookups: number;
-    podcastSessions: number;
+    readingSessions: number;
     srsReviews: number;
 }
 
@@ -101,8 +101,8 @@ export interface RadarScores {
 
 /** Heuristic 0–100 scores from app activity (not a scientific assessment). */
 export function computeRadarScores(c: LifetimeCounters, wordCount: number): RadarScores {
-    const listen = Math.min(100, c.podcastSessions * 14 + c.srsReviews * 2.5 + wordCount * 0.35);
-    const speak = Math.min(100, c.podcastSessions * 10 + c.chatMessages * 1.2 + c.srsReviews * 1.5);
+    const listen = Math.min(100, c.readingSessions * 14 + c.srsReviews * 2.5 + wordCount * 0.35);
+    const speak = Math.min(100, c.readingSessions * 10 + c.chatMessages * 1.2 + c.srsReviews * 1.5);
     const read = Math.min(100, c.visualLookups * 3.5 + wordCount * 0.55 + c.srsReviews * 0.8);
     const write = Math.min(100, c.chatMessages * 4 + c.wordsAdded * 0.4);
     return {
