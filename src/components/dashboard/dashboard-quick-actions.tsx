@@ -1,4 +1,4 @@
-import { Bot, Mic2, Image as ImageIcon, Book, BookOpen, ChevronRight } from 'lucide-react';
+import { Bot, Image as ImageIcon, Book, BookOpen, ChevronRight, Layers } from 'lucide-react';
 import type { Page } from '@/App';
 import { cn } from '@/lib/utils';
 
@@ -17,10 +17,17 @@ const actions: {
         gradient: 'from-sky-100/90 via-white/60 to-indigo-50/80',
     },
     {
-        id: 'daily-podcast',
-        title: '每日播客',
-        desc: '听读一体，点词或双击收录',
-        icon: Mic2,
+        id: 'flashcard-review',
+        title: '闪卡复习',
+        desc: '今日到期词 · 离线英中闪卡',
+        icon: Layers,
+        gradient: 'from-teal-50/90 via-white/55 to-cyan-50/75',
+    },
+    {
+        id: 'daily-reading',
+        title: '每日阅读',
+        desc: '精读与拓展，列表与导入即将上线',
+        icon: BookOpen,
         gradient: 'from-amber-50/90 via-white/50 to-orange-50/75',
     },
     {
@@ -41,41 +48,45 @@ const actions: {
 
 export function DashboardQuickActions({ onNavigate }: { onNavigate: (p: Page) => void }) {
     return (
-        <section className="space-y-4">
+        <section className="space-y-5">
             <div>
-                <h2 className="text-lg font-semibold tracking-tight text-slate-700">今天从这里开始</h2>
-                <p className="text-sm text-slate-500">入口与你在应用里的学习数据实时同步</p>
+                <h2 className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">学习入口</h2>
+                <p className="mt-1 text-lg font-semibold tracking-tight text-slate-700">Bento 快捷方式</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">与本地数据同步 · 轻点即达</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-                {actions.map((a) => (
+            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4">
+                {actions.map((a, idx) => (
                     <button
                         key={a.id}
                         type="button"
                         onClick={() => onNavigate(a.id)}
                         className={cn(
-                            'group flex items-center gap-4 rounded-2xl border border-white/90 bg-gradient-to-br p-4 text-left shadow-sm',
-                            'transition-all duration-200 hover:-translate-y-0.5 hover:border-white hover:shadow-md hover:shadow-slate-200/60',
+                            'group flex min-h-[5.5rem] flex-col justify-between rounded-3xl bg-gradient-to-br p-4 text-left shadow-[0_6px_28px_-8px_rgba(15,23,42,0.12)] ring-1 ring-white/85 backdrop-blur-md transition duration-200',
+                            'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-teal-900/5 sm:min-h-[6.25rem] sm:p-5',
+                            idx === 0 ? 'col-span-2 sm:min-h-[7rem]' : '',
                             a.gradient
                         )}
                     >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-sm ring-1 ring-white transition duration-200 group-hover:scale-[1.04]">
-                            <a.icon className="h-6 w-6" />
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/75 text-slate-600 shadow-sm ring-1 ring-white/90 transition duration-200 group-hover:scale-[1.05]">
+                                <a.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                            </div>
+                            <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                             <p className="font-semibold text-slate-800">{a.title}</p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{a.desc}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-600">{a.desc}</p>
                         </div>
-                        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-600" />
                     </button>
                 ))}
             </div>
             <button
                 type="button"
                 onClick={() => onNavigate('courses')}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200/90 bg-white/50 py-3.5 text-sm text-slate-500 backdrop-blur-sm transition hover:border-slate-300 hover:bg-white/80 hover:text-slate-700"
+                className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white/40 py-3.5 text-sm text-slate-600 shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:bg-white/60 hover:text-slate-700"
             >
                 <BookOpen className="h-4 w-4 opacity-70" />
-                我的课程（示例进度演示）
+                我的课程（示例进度）
             </button>
         </section>
     );

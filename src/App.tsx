@@ -18,12 +18,12 @@ import { CoursesPage } from "@/pages/Courses"
 import { WordBankPage } from "@/pages/WordBank"
 import { SettingsPage } from "@/pages/Settings"
 import { VisualDictionaryPage } from "@/pages/VisualDictionary"
-import { DailyPodcastPage } from "@/pages/DailyPodcast"
+import { DailyReadingPage } from "@/pages/DailyReading"
 import { FlashcardReviewPage } from "@/pages/FlashcardReview"
 import { LearningStatsPage } from "@/pages/LearningStats"
 import { AchievementsPage } from "@/pages/Achievements"
 
-export type Page = 'dashboard' | 'ai-chat' | 'courses' | 'wordbank' | 'achievements' | 'stats' | 'community' | 'settings' | 'visual-dictionary' | 'daily-podcast' | 'flashcard-review';
+export type Page = 'dashboard' | 'ai-chat' | 'courses' | 'wordbank' | 'achievements' | 'stats' | 'community' | 'settings' | 'visual-dictionary' | 'daily-reading' | 'flashcard-review';
 
 const pageTitles: Record<Page, string> = {
   dashboard: '首页',
@@ -35,7 +35,7 @@ const pageTitles: Record<Page, string> = {
   community: '社区交流',
   settings: '设置',
   'visual-dictionary': '视觉查词',
-  'daily-podcast': '每日播客',
+  'daily-reading': '每日阅读',
   'flashcard-review': '闪卡复习',
 };
 
@@ -68,8 +68,8 @@ function App() {
         return <SettingsPage />;
       case 'visual-dictionary':
         return <VisualDictionaryPage />;
-      case 'daily-podcast':
-        return <DailyPodcastPage onNavigateToSettings={() => setActivePage('settings')} />;
+      case 'daily-reading':
+        return <DailyReadingPage onNavigateToSettings={() => setActivePage('settings')} />;
       case 'flashcard-review':
         return <FlashcardReviewPage onNavigate={setActivePage} />;
       case 'stats':

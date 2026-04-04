@@ -51,10 +51,10 @@ export function DashboardDailyLoop({ onNavigate }: DashboardDailyLoopProps) {
         {
             key: 'read',
             label: '完成 1 次播客听读',
-            sub: '在阅读页点「完成本次复习」',
+            sub: '在阅读页完成当日任务（后续版本将支持）',
             done: readingDone,
             icon: BookOpen,
-            page: 'daily-podcast',
+            page: 'daily-reading',
         },
     ];
 

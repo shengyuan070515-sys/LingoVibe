@@ -10,7 +10,7 @@ import {
   Bot,
   Book,
   Image as ImageIcon,
-  Mic2
+  Layers
 } from "lucide-react"
 import {
   Sidebar,
@@ -39,9 +39,10 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
 
   const menuItems: { id: Page; icon: React.ElementType; label: string }[] = [
     { id: 'dashboard', icon: Home, label: '首页' },
+    { id: 'flashcard-review', icon: Layers, label: '闪卡复习' },
     { id: 'ai-chat', icon: Bot, label: 'AI 对话' },
     { id: 'visual-dictionary', icon: ImageIcon, label: '视觉查词' },
-    { id: 'daily-podcast', icon: Mic2, label: '每日播客' },
+    { id: 'daily-reading', icon: BookOpen, label: '每日阅读' },
     { id: 'courses', icon: BookOpen, label: '我的课程' },
     { id: 'wordbank', icon: Book, label: '📚 我的生词本' },
     { id: 'achievements', icon: Trophy, label: '成就与奖励' },
@@ -78,6 +79,7 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
       
       <SidebarFooter>
         <SidebarMenu>
+          {!isMobile && (
           <SidebarMenuItem>
             <SidebarMenuButton 
               active={activePage === 'settings'}
@@ -87,6 +89,7 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
               <span>设置</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton className="text-red-500 hover:bg-red-50 hover:text-red-600">
               <LogOut className="h-4 w-4" />
