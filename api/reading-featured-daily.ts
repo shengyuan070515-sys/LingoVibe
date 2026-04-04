@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { currentDateKeyShanghai, ensureFeaturedForDate } from './lib/reading-featured-cache';
+import { currentDateKeyShanghai, ensureFeaturedForDate } from './_lib/reading-featured-cache.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET') {

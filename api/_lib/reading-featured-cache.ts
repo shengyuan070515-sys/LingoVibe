@@ -1,6 +1,6 @@
 import { kv } from '@vercel/kv';
 import { getDateKeyShanghai } from '@/lib/date-key-shanghai';
-import { generateFeaturedBundle, type FeaturedBundle } from './reading-featured-generate';
+import { generateFeaturedBundle, type FeaturedBundle } from './reading-featured-generate.js';
 
 function kvKey(dateKey: string): string {
     return `reading:featured:${dateKey}`;

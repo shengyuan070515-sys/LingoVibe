@@ -1,6 +1,6 @@
 import { canonicalizeUrl } from '@/lib/reading-url';
-import { FEATURED_CATEGORIES, urlMatchesCategoryDomains, type FeaturedCategoryDef } from './reading-featured-config';
-import { searchTavily, type TavilySearchHit } from './tavily-search';
+import { FEATURED_CATEGORIES, urlMatchesCategoryDomains, type FeaturedCategoryDef } from './reading-featured-config.js';
+import { searchTavily, type TavilySearchHit } from './tavily-search.js';
 
 export type FeaturedBundleItem = {
     categoryId: string;

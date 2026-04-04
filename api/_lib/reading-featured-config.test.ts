@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostnameMatchesAllowlist, urlMatchesCategoryDomains } from './reading-featured-config';
+import { hostnameMatchesAllowlist, urlMatchesCategoryDomains } from './reading-featured-config.js';
 
 describe('reading-featured-config', () => {
     it('hostnameMatchesAllowlist handles www and subdomains', () => {
