@@ -54,3 +54,51 @@ export async function fetchReadingGrammarNotes(apiKey: string, selectedEnglish: 
         500
     );
 }
+
+export type ReadingWordCardData = {
+    phonetic: string;
+    pos: string;
+    definitionZh: string;
+    exampleEn: string;
+    exampleZh: string;
+};
+
+function parseReadingWordCardJson(raw: string): ReadingWordCardData {
+    let s = raw.trim();
+    const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(s);
+    if (fence) s = fence[1].trim();
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    if (start >= 0 && end > start) s = s.slice(start, end + 1);
+    const obj = JSON.parse(s) as Record<string, unknown>;
+    const asStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string).trim() : '');
+    return {
+        phonetic: asStr('phonetic'),
+        pos: asStr('pos'),
+        definitionZh: asStr('definitionZh') || asStr('definition_zh') || asStr('translation'),
+        exampleEn: asStr('exampleEn') || asStr('example_en'),
+        exampleZh: asStr('exampleZh') || asStr('example_zh'),
+    };
+}
+
+/** 阅读划词：单次 LLM 调用返回结构化「视觉词典」字段 */
+export async function fetchReadingWordCard(
+    apiKey: string,
+    word: string,
+    contextSnippet: string
+): Promise<ReadingWordCardData> {
+    const w = word.trim();
+    if (!w) throw new Error('单词为空');
+    const ctx = contextSnippet.trim().slice(0, 500);
+    const raw = await deepseekChat(
+        apiKey,
+        'You help English learners. Reply with ONE JSON object only, no markdown, no code fences, no extra keys. Keys: phonetic (IPA-like string, may be empty), pos (part of speech in English, short), definitionZh (Chinese gloss), exampleEn (one short English example using the word), exampleZh (Chinese for that example).',
+        `Word: ${w}\nContext (may be truncated):\n${ctx || '(none)'}`,
+        500
+    );
+    try {
+        return parseReadingWordCardJson(raw);
+    } catch {
+        throw new Error('查词结果解析失败，请重试');
+    }
+}

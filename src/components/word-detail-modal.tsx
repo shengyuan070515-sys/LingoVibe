@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Check, Download, Pencil, Share2, Volume2, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { VisualDictionaryCardBody } from "@/components/reading/visual-dictionary-card-body";
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { fetchUnsplashImages } from "@/lib/unsplash";
 
@@ -176,104 +177,72 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                 </button>
 
                 <div className="relative z-20 -mt-px bg-white p-8 pt-8">
-                {/* 核心单词区 */}
-                <div className="text-center mb-6">
-                    <h1 className="font-serif text-5xl font-bold text-gray-900 tracking-tight mb-3">
-                        {word.word}
-                    </h1>
-                    
-                    {/* 音标与词性 */}
-                    <div className="flex justify-center items-center gap-2 mt-3">
-                        <span className="text-gray-500 text-sm">
-                            {isEditing ? (
+                {isEditing ? (
+                    <>
+                        <div className="mb-6 text-center">
+                            <h1 className="mb-3 font-serif text-5xl font-bold tracking-tight text-gray-900">{word.word}</h1>
+                            <div className="mt-3 flex items-center justify-center gap-2">
                                 <input
                                     value={draft.phonetic}
                                     onChange={(e) => setDraft((d) => ({ ...d, phonetic: e.target.value }))}
                                     placeholder="Phonetic"
-                                    className="w-36 text-center text-sm bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-36 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                            ) : (
-                                word.phonetic || 'No phonetic'
-                            )}
-                        </span>
-                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded">
-                            {isEditing ? (
                                 <input
                                     value={draft.pos}
                                     onChange={(e) => setDraft((d) => ({ ...d, pos: e.target.value }))}
                                     placeholder="POS"
-                                    className="w-20 text-center text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-20 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-center text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                            ) : (
-                                word.pos || 'Unknown'
-                            )}
-                        </span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => playAudio(word.word)}
-                            className={isSpeaking ? "text-blue-600" : "text-gray-400 hover:text-blue-600"}
-                        >
-                            <Volume2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* 简短释义区 */}
-                <div className="text-center mb-8">
-                    <div className="w-8 h-[2px] bg-gray-200 mx-auto mt-6 mb-4" />
-                    <p className="text-gray-800 font-medium text-base">
-                        {isEditing ? (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => playAudio(word.word)}
+                                    className={isSpeaking ? "text-blue-600" : "text-gray-400 hover:text-blue-600"}
+                                >
+                                    <Volume2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="mb-8 text-center">
+                            <div className="mx-auto mb-4 mt-6 h-[2px] w-8 bg-gray-200" />
                             <textarea
                                 value={draft.translation}
                                 onChange={(e) => setDraft((d) => ({ ...d, translation: e.target.value }))}
                                 placeholder="Translation"
-                                className="w-full text-center text-base bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 rows={2}
                             />
-                        ) : (
-                            word.translation || 'No translation available'
-                        )}
-                    </p>
-                </div>
-
-                {/* 沉浸式例句区 */}
-                {(word.exampleSentence || word.exampleTranslation) && (
-                    <div className="text-center mb-8 mt-2">
-                        {word.exampleSentence && (
-                            isEditing ? (
-                                <textarea
-                                    value={draft.exampleSentence}
-                                    onChange={(e) => setDraft((d) => ({ ...d, exampleSentence: e.target.value }))}
-                                    placeholder="Example sentence"
-                                    className="w-full text-center text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-serif italic text-gray-800"
-                                    rows={3}
-                                />
-                            ) : (
-                                <p className="font-serif italic text-gray-800 text-lg text-center leading-relaxed">
-                                    {word.exampleSentence}
-                                </p>
-                            )
-                        )}
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-4 mb-3">
-                            — LINGOVIBE CONTEXT
-                        </p>
-                        {word.exampleTranslation && (
-                            isEditing ? (
-                                <textarea
-                                    value={draft.exampleTranslation}
-                                    onChange={(e) => setDraft((d) => ({ ...d, exampleTranslation: e.target.value }))}
-                                    placeholder="Example translation"
-                                    className="w-full text-center text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-500"
-                                    rows={2}
-                                />
-                            ) : (
-                                <p className="text-sm text-gray-500 text-center">
-                                    {word.exampleTranslation}
-                                </p>
-                            )
-                        )}
-                    </div>
+                        </div>
+                        <div className="mb-8 mt-2 text-center">
+                            <textarea
+                                value={draft.exampleSentence}
+                                onChange={(e) => setDraft((d) => ({ ...d, exampleSentence: e.target.value }))}
+                                placeholder="Example sentence"
+                                className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center font-serif text-sm italic text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows={3}
+                            />
+                            <p className="mb-3 mt-4 text-[10px] uppercase tracking-widest text-gray-400">— LINGOVIBE CONTEXT</p>
+                            <textarea
+                                value={draft.exampleTranslation}
+                                onChange={(e) => setDraft((d) => ({ ...d, exampleTranslation: e.target.value }))}
+                                placeholder="Example translation"
+                                className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows={2}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <VisualDictionaryCardBody
+                        word={word.word}
+                        phonetic={word.phonetic}
+                        pos={word.pos}
+                        translation={word.translation}
+                        exampleSentence={word.exampleSentence}
+                        exampleTranslation={word.exampleTranslation}
+                        isSpeaking={isSpeaking}
+                        onSpeak={() => playAudio(word.word)}
+                    />
                 )}
 
                 {/* 底部操作区 */}

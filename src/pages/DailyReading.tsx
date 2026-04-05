@@ -30,6 +30,23 @@ const DIFF_LABELS: Record<number, string> = {
 const FEATURED_SOURCES_LINE =
     '精选自《卫报》《经济学人》《自然》《新科学家》《国家地理》《时代周刊》、哈佛商业评论（HBR）、彭博社、NPR、Vox、Aeon、《大西洋月刊》《连线》、麻省理工科技评论等';
 
+type DailyTab = 'featured' | 'search' | 'import' | 'library';
+
+const TAB_ITEMS: { id: DailyTab; label: string }[] = [
+    { id: 'featured', label: '今日精选' },
+    { id: 'search', label: '联网搜索' },
+    { id: 'import', label: '导入文本' },
+    { id: 'library', label: '我的书库' },
+];
+
+function excerptFromArticle(a: { content: string; summaryText?: string; summaryOnly?: boolean }): string {
+    const src =
+        a.summaryOnly && a.summaryText?.trim()
+            ? a.summaryText.trim()
+            : a.content.trim().replace(/\s+/g, ' ');
+    return src.length > 160 ? `${src.slice(0, 160)}…` : src;
+}
+
 export interface DailyReadingPageProps {
     onNavigateToSettings?: () => void;
 }
@@ -55,6 +72,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
     const [importBody, setImportBody] = React.useState('');
 
     const [openId, setOpenId] = React.useState<string | null>(null);
+    const [activeTab, setActiveTab] = React.useState<DailyTab>('featured');
 
     const [featuredItems, setFeaturedItems] = React.useState<FeaturedBundleItem[]>([]);
     const [featuredDateKey, setFeaturedDateKey] = React.useState<string | null>(null);
@@ -276,6 +294,27 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                 </p>
             </div>
 
+            <div className="-mx-1 overflow-x-auto border-b border-slate-100 pb-px">
+                <div className="flex min-w-0 gap-1 px-1">
+                    {TAB_ITEMS.map((t) => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setActiveTab(t.id)}
+                            className={cn(
+                                'shrink-0 rounded-t-lg px-3 py-2 text-sm font-medium transition-colors',
+                                activeTab === t.id
+                                    ? 'bg-white text-teal-800 shadow-sm ring-1 ring-slate-100'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                            )}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {activeTab === 'featured' ? (
             <section className="rounded-2xl border border-teal-100/80 bg-gradient-to-b from-teal-50/40 to-white/90 p-4 shadow-sm ring-1 ring-teal-100/60 backdrop-blur-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -340,7 +379,9 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     </ul>
                 )}
             </section>
+            ) : null}
 
+            {activeTab === 'search' ? (
             <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <Search className="h-4 w-4 text-teal-600" />
@@ -404,7 +445,9 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     </Button>
                 ) : null}
             </section>
+            ) : null}
 
+            {activeTab === 'import' ? (
             <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <Upload className="h-4 w-4 text-teal-600" />
@@ -428,7 +471,9 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     加入书库
                 </Button>
             </section>
+            ) : null}
 
+            {activeTab === 'library' ? (
             <section>
                 <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <BookOpen className="h-4 w-4 text-teal-600" />
@@ -437,49 +482,60 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                 {articles.length === 0 ? (
                     <p className="text-sm text-slate-500">暂无文章，先搜索或导入一篇吧。</p>
                 ) : (
-                    <ul className="space-y-2">
+                    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {[...articles]
                             .sort((a, b) => b.fetchedAt - a.fetchedAt)
-                            .map((a) => (
+                            .map((a) => {
+                                const preview = excerptFromArticle(a);
+                                return (
                                 <li
                                     key={a.id}
-                                    className={cn(
-                                        'flex flex-col gap-2 rounded-xl border border-slate-100 bg-white/80 p-3 sm:flex-row sm:items-center sm:justify-between'
-                                    )}
+                                    className="relative flex flex-col rounded-xl border border-slate-100/90 bg-white/90 p-3 shadow-sm"
                                 >
-                                    <div className="min-w-0">
-                                        <p className="font-medium text-slate-800">{a.sourceTitle}</p>
-                                        <p className="text-xs text-slate-500">
-                                            {a.sourceType === 'user_import' ? '用户导入' : '联网精选'} ·{' '}
-                                            {DIFF_LABELS[a.difficulty]}
+                                    <span className="absolute right-2 top-2 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-800 ring-1 ring-teal-100">
+                                        {DIFF_LABELS[a.difficulty]}
+                                    </span>
+                                    <p className="pr-16 text-sm font-semibold leading-snug text-slate-800">{a.sourceTitle}</p>
+                                    {preview ? (
+                                        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-600">
+                                            {preview}
                                         </p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <select
-                                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-                                            value={a.difficulty}
-                                            onChange={(e) =>
-                                                updateDifficulty(a.id, Number(e.target.value) as ReadingDifficulty)
-                                            }
-                                        >
-                                            {([1, 2, 3, 4, 5] as const).map((d) => (
-                                                <option key={d} value={d}>
-                                                    {DIFF_LABELS[d]}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <Button type="button" size="sm" onClick={() => setOpenId(a.id)}>
+                                    ) : null}
+                                    <p className="mt-2 text-[11px] text-slate-500">
+                                        {a.sourceType === 'user_import' ? '用户导入' : '联网精选'} ·{' '}
+                                        {new Date(a.fetchedAt).toLocaleDateString()}
+                                    </p>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-50 pt-3">
+                                        <label className="flex items-center gap-1 text-[11px] text-slate-500">
+                                            难度
+                                            <select
+                                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                                                value={a.difficulty}
+                                                onChange={(e) =>
+                                                    updateDifficulty(a.id, Number(e.target.value) as ReadingDifficulty)
+                                                }
+                                            >
+                                                {([1, 2, 3, 4, 5] as const).map((d) => (
+                                                    <option key={d} value={d}>
+                                                        {DIFF_LABELS[d]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                        <Button type="button" size="sm" className="h-8" onClick={() => setOpenId(a.id)}>
                                             阅读
                                         </Button>
-                                        <Button type="button" size="sm" variant="ghost" onClick={() => remove(a.id)}>
+                                        <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => remove(a.id)}>
                                             删除
                                         </Button>
                                     </div>
                                 </li>
-                            ))}
+                            );
+                            })}
                     </ul>
                 )}
             </section>
+            ) : null}
 
             <p className="text-[11px] leading-relaxed text-slate-500">
                 联网搜索使用部署端的 Tavily（环境变量 TAVILY_API_KEY）；正文抽取仍经 Serverless。前端需配置
