@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply font-sans antialiased text-stitch-on-surface;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: theme('fontFamily.headline');
+  }
+}
+
 @layer utilities {
   .animate-in {
     animation-duration: 300ms;

@@ -116,7 +116,7 @@ function App() {
               </div>
             </header> 
             
-            <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/35">
+            <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-stitch-surface">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activePage}
