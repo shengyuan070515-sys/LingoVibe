@@ -30,6 +30,17 @@ export function patchWordAfterForgot(): Pick<WordBankItem, 'level' | 'interval' 
     };
 }
 
+/** 「模糊 / 学习中」：不升阶，次日再练（与「会」「不会」并列的第三档） */
+export function patchWordAfterLearning(w: WordBankItem): Pick<WordBankItem, 'level' | 'interval' | 'nextReviewDate'> {
+    const days = 1;
+    const now = Date.now();
+    return {
+        level: w.level,
+        interval: days,
+        nextReviewDate: now + days * DAY_MS,
+    };
+}
+
 /** C2a + D3a：仅单词，且已到复习时间 */
 export function selectDueWords(words: WordBankItem[], now = Date.now()): WordBankItem[] {
     return words

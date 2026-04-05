@@ -5,7 +5,7 @@ export interface ReviewLogEntry {
     at: number;
     wordId: string;
     word: string;
-    outcome: 'know' | 'forgot';
+    outcome: 'know' | 'forgot' | 'learning';
     levelBefore: number;
     levelAfter: number;
 }

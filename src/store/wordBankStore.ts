@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { fetchWordDetails } from '@/lib/word-utils';
 import { fetchUnsplashImages } from '@/lib/unsplash';
-import { patchWordAfterForgot, patchWordAfterKnow } from '@/lib/srs-utils';
+import { patchWordAfterForgot, patchWordAfterKnow, patchWordAfterLearning } from '@/lib/srs-utils';
 import { recordWordAdded, recordSrsReviews } from '@/store/learningAnalyticsStore';
 import { useReviewLogStore } from '@/store/reviewLogStore';
 
@@ -35,7 +35,7 @@ interface WordBankState {
     removeWord: (id: string) => void;
     updateWordProgress: (wordIds: string[]) => void;
     /** 闪卡自评：纪要 D1a/D2b，仅单词；写复习日志 H2 */
-    applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot') => void;
+    applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot' | 'learning') => void;
     clearAllWords: () => void;
     /** 同类型+同词文本去重，可合并缺失字段 */
     dedupeWords: (strategy: 'keep-newest' | 'keep-rich') => number;
@@ -251,13 +251,19 @@ export const useWordBankStore = create<WordBankState>()(
                 }));
             },
 
-            applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot') => {
+            applySrsReviewOutcome: (wordId: string, outcome: 'know' | 'forgot' | 'learning') => {
                 recordSrsReviews(1);
                 set((state: WordBankState) => {
                     const w = state.words.find((x) => x.id === wordId);
                     if (!w || w.type !== 'word') return state;
-                    const patch = outcome === 'know' ? patchWordAfterKnow(w) : patchWordAfterForgot();
-                    const levelAfter = outcome === 'know' ? w.level + 1 : 0;
+                    const patch =
+                        outcome === 'know'
+                            ? patchWordAfterKnow(w)
+                            : outcome === 'forgot'
+                              ? patchWordAfterForgot()
+                              : patchWordAfterLearning(w);
+                    const levelAfter =
+                        outcome === 'know' ? w.level + 1 : outcome === 'forgot' ? 0 : w.level;
                     useReviewLogStore.getState().push({
                         wordId,
                         word: w.word,
