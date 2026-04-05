@@ -1,6 +1,25 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import { Send, Mic, Loader2, Languages, Plus, MessageSquare, Trash2, MoreVertical, Pencil, BookOpen, Coffee, Sparkles, Menu } from 'lucide-react';
+import {
+    Send,
+    Mic,
+    Loader2,
+    Languages,
+    Plus,
+    MessageSquare,
+    Trash2,
+    MoreVertical,
+    Pencil,
+    BookOpen,
+    Coffee,
+    Sparkles,
+    Menu,
+    Volume2,
+    Sparkle,
+    Lightbulb,
+    Bolt,
+    Image as ImageIcon,
+} from 'lucide-react';
 import { WordCollectParticleBurst } from '@/components/ui/favorite-burst-button';
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useWordBankStore } from "@/store/wordBankStore";
@@ -21,6 +40,54 @@ import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEnglishSpeechRecognition } from '@/hooks/use-english-speech-recognition';
+
+/** 可按模式切换；后续可改为独立「场景」配置或路由参数 */
+export const CHAT_SCENARIO_BY_MODE: Record<
+    ChatMode,
+    { scenario: string; focusLine: string; focusSub: string; Icon: typeof BookOpen }
+> = {
+    vocabulary: {
+        scenario: '学习工坊',
+        focusLine: 'Speaking focus',
+        focusSub: '生词运用 · Active vocabulary',
+        Icon: BookOpen,
+    },
+    casual: {
+        scenario: '咖啡馆',
+        focusLine: 'Speaking focus',
+        focusSub: '礼貌点餐 · Polite ordering',
+        Icon: Coffee,
+    },
+    surprise: {
+        scenario: '自由谈天',
+        focusLine: 'Speaking focus',
+        focusSub: '自然应答 · Spontaneous replies',
+        Icon: Sparkles,
+    },
+};
+
+function userInitialsFromName(name: string): string {
+    const s = name.trim();
+    if (!s) return 'ME';
+    const p = s.split(/\s+/).filter(Boolean);
+    if (p.length >= 2) return (p[0]![0]! + p[1]![0]!).toUpperCase();
+    return s.slice(0, 2).toUpperCase();
+}
+
+function speakEnglishLine(text: string) {
+    const t = text.trim();
+    if (!t || typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'en-US';
+    const voices = window.speechSynthesis.getVoices();
+    const v =
+        voices.find((x) => x.lang === 'en-US' && (x.name.includes('Google') || x.name.includes('Microsoft'))) ||
+        voices.find((x) => x.lang.startsWith('en'));
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+}
 
 export interface FavoriteItem {
     text: string;
@@ -111,6 +178,18 @@ export function AiChatPage() {
     const [wordSaveBurstKey, setWordSaveBurstKey] = React.useState(0);
     const [sessionDrawerOpen, setSessionDrawerOpen] = React.useState(false);
 
+    const [displayName] = useLocalStorage('lingovibe_display_name', '');
+    const userInitials = userInitialsFromName(displayName);
+
+    const appendFromVoice = React.useCallback((text: string) => {
+        setInput((prev) => (prev ? `${prev.trimEnd()} ${text}` : text));
+    }, []);
+
+    const { listening, toggle: toggleMic, supported: speechSupported } = useEnglishSpeechRecognition(
+        appendFromVoice,
+        (m) => toast(m, 'error')
+    );
+
     const messagesEndRef = React.useRef<HTMLDivElement>(null);
     const selectionChangeTimerRef = React.useRef<number | null>(null);
     const lastSelectionPopupKeyRef = React.useRef<{ key: string; at: number }>({ key: '', at: 0 });
@@ -119,6 +198,8 @@ export function AiChatPage() {
     const emmaAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma&gender=female&backgroundColor=b6e3f4";
 
     const currentSession = sessions.find((s) => s.id === currentSessionId);
+    const scene = CHAT_SCENARIO_BY_MODE[chatMode];
+    const SceneIcon = scene.Icon;
 
     /** 当前模式下生成 Emma 主动开场（与生词本、时段联动） */
     React.useEffect(() => {
@@ -664,14 +745,9 @@ export function AiChatPage() {
         setIsCompletingWord(false);
     };
 
-    const chatAmbience = {
-        vocabulary:
-            'from-emerald-100/35 via-slate-50/90 to-cyan-50/40 dark:from-emerald-950/40 dark:via-slate-950 dark:to-cyan-950/35',
-        casual:
-            'from-amber-100/40 via-stone-50/95 to-orange-50/35 dark:from-amber-950/35 dark:via-stone-950 dark:to-orange-950/30',
-        surprise:
-            'from-violet-100/40 via-slate-50/90 to-indigo-100/35 dark:from-violet-950/40 dark:via-slate-950 dark:to-indigo-950/35',
-    }[chatMode];
+    const MOCK_INSIGHT_FLOW = 82;
+    const MOCK_NEW_WORDS = 12;
+    const MOCK_FLUENCY = 'B1+';
 
     return (
         <>
@@ -726,25 +802,9 @@ export function AiChatPage() {
                 </div>
             )}
 
-            <div className="relative flex h-[calc(100dvh-5.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100/50 shadow-[0_24px_80px_-24px_rgba(15,23,42,0.18)] ring-1 ring-white/60 dark:border-slate-700/50 dark:bg-slate-950/80 dark:shadow-[0_28px_90px_-20px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] dark:ring-white/[0.06] md:h-[calc(100vh-8rem)] md:rounded-3xl">
-                <div
-                    className="pointer-events-none absolute inset-0 rounded-3xl opacity-[0.55] dark:hidden"
-                    style={{
-                        background:
-                            'radial-gradient(900px 420px at 12% -10%, rgba(99,102,241,0.12), transparent 55%), radial-gradient(700px 380px at 88% 0%, rgba(16,185,129,0.08), transparent 50%), radial-gradient(600px 400px at 50% 110%, rgba(139,92,246,0.07), transparent 45%)',
-                    }}
-                />
-                <div
-                    className="pointer-events-none absolute inset-0 hidden rounded-3xl opacity-[0.5] dark:block"
-                    style={{
-                        background:
-                            'radial-gradient(880px 400px at 10% -8%, rgba(129,140,248,0.28), transparent 58%), radial-gradient(720px 360px at 92% 4%, rgba(45,212,191,0.14), transparent 52%), radial-gradient(640px 420px at 48% 108%, rgba(167,139,250,0.2), transparent 48%), linear-gradient(180deg, rgba(15,23,42,0.25) 0%, transparent 38%, rgba(15,23,42,0.35) 100%)',
-                    }}
-                />
-
-                {/* 模式切换：分段控件 + 玻璃 */}
-                <div className="relative z-10 shrink-0 border-b border-white/40 bg-white/45 px-2 py-2 backdrop-blur-xl backdrop-saturate-150 sm:px-3 sm:py-3 md:px-5 dark:border-white/[0.07] dark:bg-slate-900/50 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.05)]">
-                    <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-white/60 bg-slate-900/[0.03] p-1 shadow-inner shadow-slate-900/5 dark:border-white/[0.09] dark:bg-slate-950/40 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)] md:flex md:w-auto md:flex-row md:flex-wrap">
+            <div className="relative flex h-[calc(100dvh-5.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface shadow-stitch-card md:h-[calc(100vh-8rem)] md:rounded-3xl">
+                <div className="relative z-10 shrink-0 border-b border-stitch-outline/10 bg-stitch-surface-container-low/90 px-2 py-2 sm:px-4 sm:py-3 md:px-6">
+                    <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-stitch-outline/10 bg-stitch-surface-container-highest/40 p-1 md:flex md:w-auto md:flex-row md:flex-wrap">
                         {(
                             [
                                 {
@@ -777,16 +837,16 @@ export function AiChatPage() {
                                     className={cn(
                                         'flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-center transition-all duration-200 sm:flex-row sm:gap-2 sm:rounded-xl sm:px-3 sm:text-left md:min-w-[148px]',
                                         active
-                                            ? 'bg-white text-slate-900 shadow-md shadow-slate-900/10 ring-1 ring-slate-200/80 dark:bg-slate-800/90 dark:text-slate-50 dark:shadow-[0_8px_28px_-6px_rgba(0,0,0,0.65),inset_0_1px_0_0_rgba(255,255,255,0.09)] dark:ring-white/12'
-                                            : 'text-slate-500 hover:bg-white/50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-200'
+                                            ? 'bg-white text-stitch-on-surface shadow-sm ring-1 ring-stitch-outline/15'
+                                            : 'text-stitch-on-surface-variant hover:bg-white/60 hover:text-stitch-on-surface'
                                     )}
                                 >
                                     <span
                                         className={cn(
                                             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
                                             active
-                                                ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-300'
-                                                : 'bg-slate-200/40 text-slate-400 dark:bg-slate-700/50 dark:text-slate-500'
+                                                ? 'bg-stitch-primary/10 text-stitch-primary'
+                                                : 'bg-stitch-surface-container-high/80 text-stitch-on-surface-variant'
                                         )}
                                     >
                                         <Icon className="h-4 w-4" />
@@ -795,18 +855,18 @@ export function AiChatPage() {
                                         <span
                                             className={cn(
                                                 'text-xs font-bold tracking-tight',
-                                                active ? 'text-slate-900 dark:text-slate-50' : 'text-slate-600 dark:text-slate-400'
+                                                active ? 'text-stitch-on-surface' : 'text-stitch-on-surface-variant'
                                             )}
                                         >
                                             {tab.label}
                                         </span>
-                                        <span className="hidden text-[10px] font-medium text-slate-400 sm:block dark:text-slate-500">{tab.sub}</span>
+                                        <span className="hidden text-[10px] font-medium text-stitch-on-surface-variant sm:block">{tab.sub}</span>
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
-                    <p className="mt-2 line-clamp-2 max-w-3xl text-[10px] font-medium leading-relaxed text-slate-500 sm:mt-2.5 sm:line-clamp-none sm:text-[11px] dark:text-slate-400">
+                    <p className="mt-2 line-clamp-2 max-w-3xl text-[10px] font-medium leading-relaxed text-stitch-on-surface-variant sm:mt-2.5 sm:line-clamp-none sm:text-[11px]">
                         {
                             (
                                 [
@@ -882,176 +942,311 @@ export function AiChatPage() {
                     </div>
                 </div>
 
-                {/* 右侧：沉浸式对话舱（移动端全宽） */}
-                <div
-                    className="relative flex min-h-0 min-w-0 flex-1 flex-col"
-                    onMouseUp={handleTextSelectGestureEnd}
-                    onTouchEnd={handleTextSelectGestureEnd}
-                >
-                    {currentSession ? (
-                        <>
-                            <div className="flex items-center justify-between gap-2 border-b border-white/50 bg-white/35 px-3 py-3 backdrop-blur-xl backdrop-saturate-150 sm:px-5 sm:py-3.5 dark:border-white/[0.07] dark:bg-slate-900/45 dark:shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.04)]">
-                                <div className="flex min-w-0 items-center gap-2 sm:gap-3.5">
+                {currentSession ? (
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
+                        <div
+                            className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+                            onMouseUp={handleTextSelectGestureEnd}
+                            onTouchEnd={handleTextSelectGestureEnd}
+                        >
+                            <header className="flex h-auto min-h-[4.5rem] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stitch-outline/10 bg-stitch-surface-container-low px-4 py-3 sm:px-8 sm:py-4">
+                                <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
                                     <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-9 shrink-0 gap-1 border-slate-200/80 bg-white/60 px-2 text-xs text-slate-700 shadow-sm md:hidden dark:border-white/15 dark:bg-slate-800/60 dark:text-slate-200"
+                                        className="h-9 shrink-0 gap-1 border-stitch-outline/20 bg-white px-2 text-xs md:hidden"
                                         onClick={() => setSessionDrawerOpen(true)}
                                     >
                                         <Menu className="h-4 w-4" />
                                         对话
                                     </Button>
-                                    <div className="relative shrink-0">
-                                        <span className="absolute -bottom-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm dark:border-slate-900" />
-                                        <Avatar className="relative z-10 h-10 w-10 border-2 border-white shadow-lg shadow-indigo-500/15 ring-2 ring-indigo-100/80 sm:h-11 sm:w-11 dark:border-slate-700 dark:ring-indigo-500/30">
-                                            <AvatarImage src={emmaAvatar} className="object-cover" />
-                                            <AvatarFallback className="bg-indigo-600 text-[10px] text-white sm:text-xs">EM</AvatarFallback>
-                                        </Avatar>
+                                    <div className="rounded-xl border border-stitch-outline/10 bg-white p-2.5 shadow-sm">
+                                        <SceneIcon className="h-5 w-5 text-stitch-primary" strokeWidth={2} />
                                     </div>
                                     <div className="min-w-0">
-                                        <h2 className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-slate-50">Emma</h2>
-                                        <div className="mt-0.5 flex items-center gap-2">
-                                            <span className={cn('h-1.5 w-1.5 rounded-full', (isLoading || isOpening) ? 'animate-pulse bg-amber-400' : 'bg-emerald-400')} />
-                                            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                                                {(isLoading || isOpening) ? 'Composing' : 'Live'}
-                                            </span>
+                                        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-stitch-on-surface-variant/60">
+                                            Current Scenario
+                                        </p>
+                                        <h2 className="font-headline text-base font-bold leading-none text-stitch-on-surface sm:text-lg">
+                                            {scene.scenario}
+                                        </h2>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                                    <div className="flex flex-col items-end text-right">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-stitch-secondary">
+                                            {scene.focusLine}
+                                        </span>
+                                        <span className="text-sm font-semibold text-stitch-on-surface">{scene.focusSub}</span>
+                                    </div>
+                                    <div className="hidden h-10 w-px bg-stitch-outline/20 sm:block" />
+                                    <div className="flex -space-x-2">
+                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                                            <AvatarImage src={emmaAvatar} className="object-cover" />
+                                            <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-stitch-surface-container-highest text-xs font-bold text-stitch-primary shadow-sm">
+                                            AI
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </header>
 
                             <div
-                                className={cn(
-                                    'relative flex-1 space-y-6 overflow-y-auto bg-gradient-to-b px-3 py-6 sm:space-y-8 sm:px-4 sm:py-8 md:px-8',
-                                    chatAmbience
-                                )}
+                                className="relative flex-1 space-y-6 overflow-y-auto bg-stitch-surface px-4 py-6 sm:space-y-8 sm:px-8 sm:py-8"
                             >
-                                <div
-                                    className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-[0.22]"
-                                    style={{
-                                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-                                    }}
-                                />
-
-                                <div className="relative mx-auto max-w-2xl space-y-6 sm:space-y-8">
-                                {isOpening && currentSession.messages.length === 0 && (
-                                    <div className="flex items-end gap-3">
-                                        <Avatar className="h-10 w-10 shrink-0 border-2 border-white shadow-md dark:border-slate-700">
-                                            <AvatarImage src={emmaAvatar} />
-                                            <AvatarFallback>EM</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex items-center gap-3 rounded-3xl rounded-bl-md border border-white/70 bg-white/75 px-5 py-3.5 shadow-lg shadow-slate-900/5 backdrop-blur-md dark:border-white/[0.1] dark:bg-slate-800/55 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.07)] dark:backdrop-blur-xl">
-                                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-500 dark:text-indigo-400" />
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Emma 正在根据当前模式向你搭话…</span>
-                                        </div>
-                                    </div>
-                                )}
-                                {currentSession.messages.map((msg, index) => (
-                                    <div
-                                        key={`${index}-${msg.role}-${msg.content?.slice(0, 40) ?? ''}`}
-                                        className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
-                                    >
-                                        <Avatar className={cn('mt-0.5 shrink-0 border-2 border-white shadow-md dark:border-slate-700', msg.role === 'assistant' ? 'h-10 w-10' : 'h-9 w-9')}>
-                                            {msg.role === 'assistant' ? (
-                                                <><AvatarImage src={emmaAvatar} /><AvatarFallback className="bg-indigo-600 text-[10px] text-white">EM</AvatarFallback></>
-                                            ) : (
-                                                <AvatarFallback className="bg-slate-700 text-[10px] text-white">ME</AvatarFallback>
-                                            )}
-                                        </Avatar>
-                                        <div className={cn('flex min-w-0 max-w-[min(100%,34rem)] flex-col gap-2', msg.role === 'user' ? 'items-end' : 'items-start')}>
-                                            <div
-                                                className={cn(
-                                                    'message-content relative cursor-text select-text rounded-3xl px-5 py-3.5 text-[15px] leading-relaxed shadow-lg transition-shadow',
-                                                    msg.role === 'user'
-                                                        ? 'rounded-br-md bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-500/20'
-                                                        : 'group rounded-bl-md border border-white/80 bg-white/80 text-slate-800 shadow-slate-900/5 backdrop-blur-md backdrop-saturate-150 dark:border-white/[0.1] dark:bg-slate-800/65 dark:text-slate-100 dark:shadow-[0_14px_40px_-14px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150'
-                                                )}
-                                            >
-                                                {msg.correction && (
-                                                    <div className="mb-3 rounded-xl border border-red-200/80 bg-red-50/95 p-3 text-xs text-red-900 dark:border-red-500/25 dark:bg-red-950/45 dark:text-red-100">
-                                                        <p className="mb-1 font-bold">【纠错】</p>
-                                                        <p className="leading-relaxed">{msg.correction}</p>
-                                                    </div>
-                                                )}
-                                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                <div className="relative mx-auto flex w-full max-w-2xl flex-col space-y-8 px-1">
+                                    {isOpening && currentSession.messages.length === 0 && (
+                                        <div className="flex max-w-2xl gap-4">
+                                            <Avatar className="mt-1 h-10 w-10 shrink-0 border border-stitch-outline/10 shadow-sm">
+                                                <AvatarImage src={emmaAvatar} />
+                                                <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex items-center gap-3 rounded-2xl rounded-tl-none border border-stitch-outline/10 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
+                                                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-stitch-primary" />
+                                                <span className="text-sm font-medium text-stitch-on-surface-variant">
+                                                    Emma 正在根据当前模式向你搭话…
+                                                </span>
                                             </div>
-                                            {msg.role === 'assistant' && (
-                                                <div className="flex flex-col items-start gap-2 pl-1">
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => toggleTranslation(index)} 
-                                                        className="flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/15"
-                                                    >
-                                                        <Languages className="h-3.5 w-3.5" />
-                                                        {msg.showTranslation ? '隐藏翻译' : '查看翻译'}
-                                                    </button>
-                                                    {msg.showTranslation && (
-                                                        <div className="max-w-full rounded-2xl border border-indigo-100/80 bg-indigo-50/60 px-4 py-3 text-sm italic leading-relaxed text-indigo-950/90 shadow-inner animate-in fade-in slide-in-from-top-1 duration-300 dark:border-indigo-400/20 dark:bg-indigo-950/40 dark:text-indigo-100 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+                                        </div>
+                                    )}
+                                    {currentSession.messages.map((msg, index) => {
+                                        const prev = index > 0 ? currentSession.messages[index - 1] : undefined;
+                                        const next = currentSession.messages[index + 1];
+                                        if (msg.role === 'user') {
+                                            const grammarFromAssistant =
+                                                next?.role === 'assistant' && next.correction?.trim()
+                                                    ? next.correction.trim()
+                                                    : null;
+                                            return (
+                                                <div
+                                                    key={`${index}-user-${msg.content?.slice(0, 24) ?? ''}`}
+                                                    className="flex max-w-2xl flex-row-reverse gap-4 self-end"
+                                                >
+                                                    <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stitch-primary-fixed font-bold text-stitch-on-primary-fixed">
+                                                        {userInitials}
+                                                    </div>
+                                                    <div className="min-w-0 space-y-3 text-right">
+                                                        <div className="message-content rounded-2xl rounded-tr-none bg-stitch-primary px-5 py-4 text-left shadow-md">
+                                                            <p className="text-[15px] font-medium leading-relaxed text-white">
+                                                                {msg.content}
+                                                            </p>
+                                                        </div>
+                                                        {grammarFromAssistant ? (
+                                                            <div className="rounded-xl border border-stitch-secondary/10 bg-stitch-secondary-container/30 p-4 text-left backdrop-blur-sm">
+                                                                <div className="mb-2 flex items-center gap-2">
+                                                                    <Sparkle className="h-4 w-4 text-stitch-secondary" />
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-stitch-secondary">
+                                                                        Grammar Suggestion
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs leading-relaxed text-stitch-on-secondary-fixed-variant">
+                                                                    {grammarFromAssistant}
+                                                                </p>
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        const showCorrectionBelowAssistant =
+                                            !!msg.correction?.trim() && prev?.role !== 'user';
+                                        return (
+                                            <div
+                                                key={`${index}-asst-${msg.content?.slice(0, 24) ?? ''}`}
+                                                className="flex max-w-2xl gap-4"
+                                            >
+                                                <Avatar className="mt-1 h-10 w-10 shrink-0 border border-stitch-outline/10 shadow-sm">
+                                                    <AvatarImage src={emmaAvatar} />
+                                                    <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0 space-y-3">
+                                                    <div className="message-content rounded-2xl rounded-tl-none border border-stitch-outline/5 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
+                                                        <p className="text-[15px] font-medium leading-relaxed text-stitch-on-surface">
+                                                            {msg.content}
+                                                        </p>
+                                                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => speakEnglishLine(msg.content)}
+                                                                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-stitch-primary transition-colors hover:bg-stitch-primary/5"
+                                                            >
+                                                                <Volume2 className="h-4 w-4" />
+                                                                听
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => void toggleTranslation(index)}
+                                                                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-stitch-on-surface-variant/70 transition-colors hover:bg-black/5"
+                                                            >
+                                                                <Languages className="h-4 w-4" />
+                                                                {msg.showTranslation ? '隐藏翻译' : '翻译'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {msg.showTranslation ? (
+                                                        <div className="rounded-xl border border-stitch-primary-fixed/40 bg-stitch-primary-fixed/25 px-4 py-3 text-sm italic leading-relaxed text-stitch-on-surface">
                                                             {msg.isTranslating ? (
                                                                 <div className="flex items-center gap-2 not-italic">
-                                                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-                                                                    <span className="text-xs text-slate-500 dark:text-slate-400">Emma 正在翻译中…</span>
+                                                                    <Loader2 className="h-4 w-4 animate-spin text-stitch-primary" />
+                                                                    <span className="text-xs text-stitch-on-surface-variant">
+                                                                        翻译中…
+                                                                    </span>
                                                                 </div>
                                                             ) : (
-                                                                msg.translation || 'Emma 暂时无法翻译这段话。'
+                                                                msg.translation || '暂无法翻译。'
                                                             )}
                                                         </div>
-                                                    )}
+                                                    ) : null}
+                                                    {showCorrectionBelowAssistant ? (
+                                                        <div className="rounded-xl border border-stitch-secondary/10 bg-stitch-secondary-container/30 p-4 backdrop-blur-sm">
+                                                            <div className="mb-2 flex items-center gap-2">
+                                                                <Sparkle className="h-4 w-4 text-stitch-secondary" />
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-stitch-secondary">
+                                                                    Grammar Suggestion
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs leading-relaxed text-stitch-on-secondary-fixed-variant">
+                                                                {msg.correction!.trim()}
+                                                            </p>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
-                                            )}
+                                            </div>
+                                        );
+                                    })}
+                                    {isLoading && (
+                                        <div className="flex max-w-2xl gap-4">
+                                            <Avatar className="mt-1 h-10 w-10 shrink-0 border border-stitch-outline/10 shadow-sm">
+                                                <AvatarImage src={emmaAvatar} />
+                                                <AvatarFallback>EM</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex items-center gap-3 rounded-2xl rounded-tl-none border border-stitch-outline/10 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
+                                                <Loader2 className="h-4 w-4 animate-spin text-stitch-primary" />
+                                                <span className="text-sm font-medium text-stitch-on-surface-variant">
+                                                    Emma is thinking…
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {isLoading && (
-                                    <div className="flex items-end gap-3">
-                                        <Avatar className="h-10 w-10 border-2 border-white shadow-md dark:border-slate-700">
-                                            <AvatarImage src={emmaAvatar} />
-                                            <AvatarFallback>EM</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex items-center gap-3 rounded-3xl rounded-bl-md border border-white/70 bg-white/75 px-5 py-3.5 shadow-md backdrop-blur-md dark:border-white/[0.1] dark:bg-slate-800/50 dark:shadow-[0_10px_36px_-10px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:backdrop-blur-xl">
-                                            <Loader2 className="h-4 w-4 animate-spin text-indigo-500 dark:text-indigo-400" />
-                                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Emma is thinking…</span>
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={messagesEndRef} />
+                                    )}
+                                    <div ref={messagesEndRef} />
                                 </div>
                             </div>
 
-                            <div className="relative border-t border-white/50 bg-gradient-to-t from-white/90 via-white/70 to-transparent p-3 pb-4 backdrop-blur-xl backdrop-saturate-150 sm:p-4 sm:pb-5 dark:border-white/[0.08] dark:from-slate-950/92 dark:via-slate-950/55 dark:to-transparent dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
-                                <div className="mx-auto flex max-w-2xl flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-                                    <div className="relative min-h-[52px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-white/85 shadow-inner shadow-slate-900/5 backdrop-blur-md dark:border-white/[0.12] dark:bg-slate-900/70 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:backdrop-blur-xl">
-                                        <textarea
-                                            value={input}
-                                            onChange={(e) => setInput(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleSend();
-                                                }
-                                            }}
-                                            placeholder="用英语回复 Emma…"
-                                            disabled={isLoading || isOpening || (!!currentSession?.openingPending && currentSession.messages.length === 0)}
-                                            className="max-h-36 min-h-[52px] w-full resize-none bg-transparent px-3 py-3 pr-11 text-[15px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-45 sm:px-4 sm:py-3.5 sm:pr-12 dark:text-slate-100 dark:placeholder:text-slate-500"
-                                            rows={1}
-                                        />
-                                        <Button variant="ghost" size="icon" className="absolute bottom-2 right-2 h-9 w-9 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400">
-                                            <Mic className="h-4 w-4" />
+                            <footer className="shrink-0 border-t border-stitch-outline/10 bg-stitch-surface-container-low/50 p-4 backdrop-blur-md sm:p-6">
+                                <div className="mx-auto flex max-w-4xl items-center gap-3 rounded-2xl border border-stitch-outline/15 bg-stitch-surface-container-lowest p-2 shadow-lg">
+                                    <button
+                                        type="button"
+                                        aria-label={listening ? '停止语音输入' : '语音输入'}
+                                        disabled={!speechSupported || isLoading || isOpening}
+                                        onClick={() => toggleMic()}
+                                        className={cn(
+                                            'shrink-0 rounded-xl p-3 text-stitch-on-surface-variant transition-colors hover:text-stitch-primary',
+                                            listening && 'text-stitch-primary ring-2 ring-stitch-primary/30',
+                                            !speechSupported && 'cursor-not-allowed opacity-40'
+                                        )}
+                                    >
+                                        <Mic className="h-5 w-5" />
+                                    </button>
+                                    <textarea
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                void handleSend();
+                                            }
+                                        }}
+                                        placeholder="Type your response here…"
+                                        disabled={
+                                            isLoading ||
+                                            isOpening ||
+                                            (!!currentSession?.openingPending && currentSession.messages.length === 0)
+                                        }
+                                        rows={1}
+                                        className="max-h-36 min-h-[48px] flex-1 resize-none border-0 bg-transparent py-3 text-[15px] font-medium text-stitch-on-surface placeholder:text-stitch-on-surface-variant/40 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-45"
+                                    />
+                                    <div className="flex shrink-0 items-center gap-1 pr-1">
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title="即将支持"
+                                            className="rounded-xl p-2 text-stitch-on-surface-variant/50"
+                                        >
+                                            <ImageIcon className="h-5 w-5" />
+                                        </button>
+                                        <Button
+                                            type="button"
+                                            onClick={() => void handleSend()}
+                                            disabled={
+                                                isLoading ||
+                                                isOpening ||
+                                                !input.trim() ||
+                                                (!!currentSession?.openingPending &&
+                                                    currentSession.messages.length === 0)
+                                            }
+                                            className="h-11 rounded-xl bg-stitch-primary px-3 text-white shadow-sm transition hover:bg-stitch-primary-container active:scale-95 disabled:opacity-40"
+                                        >
+                                            <Send className="h-5 w-5" />
                                         </Button>
                                     </div>
-                                    <Button
-                                        onClick={handleSend}
-                                        disabled={isLoading || isOpening || !input.trim() || (!!currentSession?.openingPending && currentSession.messages.length === 0)}
-                                        className="h-11 w-full shrink-0 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 px-5 shadow-lg shadow-indigo-500/30 transition hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none sm:h-[52px] sm:w-auto dark:shadow-indigo-900/50 dark:disabled:from-slate-800 dark:disabled:to-slate-800 dark:disabled:text-slate-600"
-                                    >
-                                        <Send className="h-5 w-5" />
-                                    </Button>
+                                </div>
+                                <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-tighter text-stitch-on-surface-variant/40">
+                                    Enter 发送 · 麦克风英文听写
+                                    {!speechSupported ? '（当前环境不支持语音识别）' : null}
+                                </p>
+                            </footer>
+                        </div>
+                        <aside className="hidden w-80 shrink-0 flex-col gap-6 overflow-y-auto border-l border-stitch-outline/10 bg-stitch-surface-container-low p-6 xl:flex">
+                            <h3 className="mb-2 text-sm font-black uppercase tracking-widest text-stitch-on-surface-variant">
+                                Practice Insights
+                            </h3>
+                            <div className="rounded-xl border border-stitch-outline/5 bg-stitch-surface-container-lowest p-5 shadow-sm">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <span className="text-xs font-bold text-stitch-on-surface-variant">Conversation Flow</span>
+                                    <span className="text-xs font-black text-stitch-secondary">{MOCK_INSIGHT_FLOW}%</span>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-stitch-surface-container-highest">
+                                    <div
+                                        className="h-full rounded-full bg-stitch-secondary"
+                                        style={{ width: `${MOCK_INSIGHT_FLOW}%` }}
+                                    />
                                 </div>
                             </div>
-                        </>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-2 rounded-xl bg-stitch-primary-fixed/30 p-4">
+                                    <BookOpen className="h-5 w-5 text-stitch-primary" />
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase text-stitch-primary/70">New Words</p>
+                                        <p className="text-xl font-black text-stitch-primary">{MOCK_NEW_WORDS}</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2 rounded-xl bg-stitch-tertiary-fixed/30 p-4">
+                                    <Bolt className="h-5 w-5 text-stitch-tertiary" />
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase text-stitch-tertiary/70">Fluency</p>
+                                        <p className="text-xl font-black text-stitch-tertiary">{MOCK_FLUENCY}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-auto rounded-xl border border-stitch-outline/10 bg-stitch-surface-container-highest/50 p-5">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Lightbulb className="text-lg text-stitch-secondary" />
+                                    <span className="text-xs font-black uppercase tracking-widest text-stitch-on-surface">
+                                        Tutor&apos;s Tip
+                                    </span>
+                                </div>
+                                <p className="text-xs italic leading-relaxed text-stitch-on-surface-variant">
+                                    {scene.focusSub.includes('点餐')
+                                        ? "在餐厅场景里，用 I'll have… 或 Could I get… 比直说 I want… 更地道。"
+                                        : '保持句子简短、先听懂再回答，对话会更顺畅。'}
+                                </p>
+                            </div>
+                        </aside>
+                    </div>
                     ) : (
-                        <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-indigo-50/30 px-6 text-center dark:from-slate-950 dark:to-indigo-950/40">
+                        <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden bg-stitch-surface px-6 text-center">
                             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.08),_transparent_65%)] dark:bg-[radial-gradient(ellipse_at_center,_rgba(129,140,248,0.18),_transparent_60%)]" />
                             <div className="relative rounded-3xl border border-white/80 bg-white/60 p-10 shadow-xl shadow-indigo-500/10 backdrop-blur-md dark:border-white/[0.1] dark:bg-slate-900/55 dark:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.65),inset_0_1px_0_0_rgba(255,255,255,0.08)] dark:backdrop-blur-xl">
                                 <MessageSquare className="mx-auto mb-4 h-14 w-14 text-indigo-400/80 dark:text-indigo-400/70" />
@@ -1060,7 +1255,6 @@ export function AiChatPage() {
                             </div>
                         </div>
                     )}
-                </div>
                 </div>
             </div>
         </>
