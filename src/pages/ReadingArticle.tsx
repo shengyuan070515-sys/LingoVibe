@@ -423,7 +423,7 @@ export function ReadingArticleView({
                 >
                     原文出处
                 </a>
-            )}
+            ) : null}
 
             <div className="flex flex-wrap gap-2">
                 <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -470,7 +470,7 @@ export function ReadingArticleView({
                         隐藏
                     </Button>
                 </div>
-            )}
+            ) : null}
 
             {selZhOpen && selZh ? (
                 <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
@@ -480,14 +480,14 @@ export function ReadingArticleView({
                         隐藏
                     </Button>
                 </div>
-            )}
+            ) : null}
 
             {grammar ? (
                 <div className="rounded-xl border border-amber-100 bg-amber-50/90 p-3 text-sm text-amber-950">
                     <p className="mb-1 text-xs font-semibold">语法要点</p>
                     <p className="whitespace-pre-wrap leading-relaxed">{grammar}</p>
                 </div>
-            )}
+            ) : null}
 
             <div
                 ref={scrollRef}
@@ -522,7 +522,7 @@ export function ReadingArticleView({
                                 >
                                     原文有付费墙限制，已为您提取核心摘要。想看全文请点此去官网。
                                 </a>
-                            )}
+                            ) : null}
                         </div>
                     ) : displayBody.trim() ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READING_MARKDOWN_COMPONENTS}>
@@ -549,7 +549,7 @@ export function ReadingArticleView({
                 <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
                     去设置填写阅读 Key
                 </Button>
-            )}
+            ) : null}
         </div>
     );
 }

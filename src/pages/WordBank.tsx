@@ -117,7 +117,7 @@ export function WordBankPage() {
                             闪卡复习（今日到期词）
                         </Button>
                     </div>
-                )}
+                ) : null}
 
                 {safeWords.length > 0 && (
                     <div className="mb-5 max-w-full min-w-0 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/80 to-white p-3 shadow-sm sm:mb-6 sm:p-4">
