@@ -23,6 +23,7 @@ import { useReadingLibraryStore, type ReadingArticle as RA } from '@/store/readi
 import { useWordBankStore } from '@/store/wordBankStore';
 import { recordReadingSession } from '@/store/learningAnalyticsStore';
 import { syncDailyLoopDate, useDailyLoopStore } from '@/store/dailyLoopStore';
+import { speakEnglish } from '@/lib/speak-english';
 
 const DIFF_LABELS: Record<number, string> = {
     1: '入门',
@@ -57,20 +58,6 @@ const READING_MARKDOWN_COMPONENTS: Components = {
         );
     },
 };
-
-function speakEnglish(text: string) {
-    const t = text.trim();
-    if (!t || typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'en-US';
-    const voices = window.speechSynthesis.getVoices();
-    const v =
-        voices.find((x) => x.lang === 'en-US' && (x.name.includes('Google') || x.name.includes('Microsoft'))) ||
-        voices.find((x) => x.lang.startsWith('en'));
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
-}
 
 function nodeInside(el: HTMLElement | null, node: Node | null): boolean {
     if (!el || !node) return false;
@@ -469,7 +456,7 @@ export function ReadingArticleView({
                     {transLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
                     翻译全文
                 </Button>
-                <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => speakEnglish(displayBody)}>
+                <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => void speakEnglish(displayBody)}>
                     <Volume2 className="h-3.5 w-3.5" />
                     朗读全文
                 </Button>

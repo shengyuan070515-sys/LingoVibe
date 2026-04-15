@@ -241,100 +241,97 @@ export function parseEmmaResponse(text: string) {
     };
 }
 
-/** 通用 Emma 多轮对话（DeepSeek），与 AI 对话页、微课共用 */
+// ─── 代理调用工具 ────────────────────────────────────────────────────────────
+
+function getApiBase(): string {
+    return ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
+}
+
+interface DeepSeekPayload {
+    messages: Array<{ role: string; content: string }>;
+    temperature?: number;
+    max_tokens?: number;
+    response_format?: { type: string };
+}
+
+async function callProxy(payload: DeepSeekPayload): Promise<string> {
+    const base = getApiBase();
+    const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        let errMsg = `请求失败 ${res.status}`;
+        try {
+            const errBody = await res.json();
+            errMsg = (errBody as any)?.error || (errBody as any)?.detail || errMsg;
+        } catch { /* ignore */ }
+        throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const content = (data as any)?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+        throw new Error('接口未返回有效内容，请稍后重试');
+    }
+    return content;
+}
+
+// ─── 公开 API（保持原签名兼容，_apiKey 参数保留但不再使用）────────────────
+
+/** 通用 Emma 多轮对话，与 AI 对话页、微课共用 */
 export async function fetchEmmaChatCompletion(
-    apiKey: string,
+    _apiKey: string,
     systemMessage: { role: 'system'; content: string },
     chatMessages: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<{ correction?: string; content: string; translation?: string }> {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-            model: 'deepseek-chat',
-            temperature: 0.6,
-            messages: [systemMessage, ...chatMessages],
-        }),
+    const raw = await callProxy({
+        messages: [systemMessage, ...chatMessages],
+        temperature: 0.6,
     });
-    if (!response.ok) {
-        let errMsg = `请求失败 ${response.status}`;
-        try {
-            const errBody = await response.json();
-            errMsg = errBody?.error?.message || errBody?.message || errMsg;
-        } catch {
-            /* ignore */
-        }
-        throw new Error(errMsg);
-    }
-    const data = await response.json();
-    const rawContent = data?.choices?.[0]?.message?.content;
-    if (typeof rawContent !== 'string' || !rawContent.trim()) {
-        throw new Error('接口未返回有效内容，请稍后重试');
-    }
-    return parseEmmaResponse(rawContent);
+    return parseEmmaResponse(raw);
 }
 
-/** 将一句英文译为口语化中文（与 AI 对话页「查看翻译」一致） */
-export async function fetchEnglishToChineseTranslation(apiKey: string, englishText: string): Promise<string> {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-                {
-                    role: 'system',
-                    content:
-                        'Translate the following English text into natural conversational Chinese. Return ONLY the Chinese translation without any quotes or extra text.',
-                },
-                {
-                    role: 'user',
-                    content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${englishText}`,
-                },
-            ],
-            max_tokens: 300,
-            temperature: 0.2,
-        }),
+/** 将一句英文译为口语化中文 */
+export async function fetchEnglishToChineseTranslation(_apiKey: string, englishText: string): Promise<string> {
+    return callProxy({
+        messages: [
+            {
+                role: 'system',
+                content:
+                    'Translate the following English text into natural conversational Chinese. Return ONLY the Chinese translation without any quotes or extra text.',
+            },
+            {
+                role: 'user',
+                content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${englishText}`,
+            },
+        ],
+        max_tokens: 300,
+        temperature: 0.2,
     });
-    if (!response.ok) {
-        let errMsg = `翻译请求失败 ${response.status}`;
-        try {
-            const errBody = await response.json();
-            errMsg = errBody?.error?.message || errMsg;
-        } catch {
-            /* ignore */
-        }
-        throw new Error(errMsg);
-    }
-    const data = await response.json();
-    return String(data?.choices?.[0]?.message?.content ?? '').trim();
 }
 
-/** 主动开场：仅一条 user instruction + 同一套 system prompt，使用与对话相同的 DeepSeek Key */
+/** 主动开场白 */
 export async function fetchProactiveOpening(
-    apiKey: string,
+    _apiKey: string,
     mode: ChatMode,
     words: WordBankItem[]
 ): Promise<{ correction?: string; content: string; translation?: string }> {
     const instruction = buildOpeningUserInstruction(mode, words, new Date());
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-            model: 'deepseek-chat',
-            temperature: 0.6,
-            messages: [
-                emmaSystemPrompt,
-                {
-                    role: 'user',
-                    content: `${instruction}\n\nThis is the FIRST message of a new chat — no user message yet. Output ONLY the three tags [CORRECTION] (omit if none), [CONTENT], [TRANSLATION] as usual.`,
-                },
-            ],
-        }),
+    const raw = await callProxy({
+        messages: [
+            emmaSystemPrompt,
+            {
+                role: 'user',
+                content: `${instruction}\n\nThis is the FIRST message of a new chat — no user message yet. Output ONLY the three tags [CORRECTION] (omit if none), [CONTENT], [TRANSLATION] as usual.`,
+            },
+        ],
+        temperature: 0.6,
     });
-    if (!response.ok) throw new Error('Opening request failed');
-    const data = await response.json();
-    const raw = data.choices[0].message.content as string;
     return parseEmmaResponse(raw);
 }
 
@@ -345,27 +342,19 @@ Output exactly ONE encouraging sentence in English for the learner.
 Rules: max 28 words; natural and sincere; you may weave in their vocabulary word if it fits smoothly; no quotation marks around the whole sentence; no Chinese; no lists; no follow-up question.`,
 };
 
-/** 首页「Today's Mood」：基于最近收录词生成一句英文鼓励语（与对话共用 DeepSeek Key） */
-export async function fetchTodaysMoodGreeting(apiKey: string, word: string): Promise<string> {
+/** 首页「Today's Mood」：基于最近收录词生成一句英文鼓励语 */
+export async function fetchTodaysMoodGreeting(_apiKey: string, word: string): Promise<string> {
     const w = (word || '').trim() || 'your latest word';
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-            model: 'deepseek-chat',
-            temperature: 0.65,
-            messages: [
-                moodGreetingSystem,
-                {
-                    role: 'user',
-                    content: `The learner recently saved this vocabulary item: "${w}". Write the single English sentence now.`,
-                },
-            ],
-        }),
+    let line = await callProxy({
+        messages: [
+            moodGreetingSystem,
+            {
+                role: 'user',
+                content: `The learner recently saved this vocabulary item: "${w}". Write the single English sentence now.`,
+            },
+        ],
+        temperature: 0.65,
     });
-    if (!response.ok) throw new Error('Mood greeting request failed');
-    const data = await response.json();
-    let line = String(data.choices[0]?.message?.content ?? '').trim();
     line = line.replace(/^["'\s]+|["'\s]+$/g, '');
     return line || `Every step with "${w}" counts — you've got this.`;
 }

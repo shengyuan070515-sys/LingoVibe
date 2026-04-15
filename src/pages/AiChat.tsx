@@ -32,6 +32,8 @@ import {
     migrateLegacyChatSessionsIfNeeded,
     parseEmmaResponse,
     fetchProactiveOpening,
+    fetchEmmaChatCompletion,
+    fetchEnglishToChineseTranslation,
     type AiChatPersistedState,
 } from '@/lib/ai-chat';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEnglishSpeechRecognition } from '@/hooks/use-english-speech-recognition';
+import { speakEnglish } from '@/lib/speak-english';
 
 /** 可按模式切换；后续可改为独立「场景」配置或路由参数 */
 export const CHAT_SCENARIO_BY_MODE: Record<
@@ -75,20 +78,6 @@ function userInitialsFromName(name: string): string {
     return s.slice(0, 2).toUpperCase();
 }
 
-function speakEnglishLine(text: string) {
-    const t = text.trim();
-    if (!t || typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'en-US';
-    const voices = window.speechSynthesis.getVoices();
-    const v =
-        voices.find((x) => x.lang === 'en-US' && (x.name.includes('Google') || x.name.includes('Microsoft'))) ||
-        voices.find((x) => x.lang.startsWith('en'));
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
-}
-
 export interface FavoriteItem {
     text: string;
     type: 'word' | 'sentence';
@@ -101,7 +90,6 @@ export interface FavoriteItem {
 }
 
 export function AiChatPage() {
-    const [apiKey] = useLocalStorage('chat_api_key', '');
     const { addWord } = useWordBankStore();
     const markChatRoundDone = useDailyLoopStore((s) => s.markChatRoundDone);
 
@@ -203,7 +191,7 @@ export function AiChatPage() {
 
     /** 当前模式下生成 Emma 主动开场（与生词本、时段联动） */
     React.useEffect(() => {
-        if (!apiKey || !currentSessionId || !currentSession) return;
+        if (!currentSessionId || !currentSession) return;
         if (currentSession.messages.length > 0) return;
         if (currentSession.openingPending !== true) return;
 
@@ -213,7 +201,7 @@ export function AiChatPage() {
         (async () => {
             try {
                 const freshWords = useWordBankStore.getState().words;
-                const parsed = await fetchProactiveOpening(apiKey, chatMode, freshWords);
+                const parsed = await fetchProactiveOpening('', chatMode, freshWords);
                 if (runId !== openingRunRef.current) return;
                 const title =
                     parsed.content.length > 32 ? `${parsed.content.slice(0, 30)}...` : parsed.content || 'New Chat';
@@ -248,7 +236,6 @@ export function AiChatPage() {
             }
         })();
     }, [
-        apiKey,
         chatMode,
         currentSession?.id,
         currentSession?.openingPending,
@@ -345,10 +332,6 @@ export function AiChatPage() {
 
     const handleSend = async () => {
         if (!input.trim() || !currentSessionId) return;
-        if (!apiKey) {
-            toast("请先在设置页面填写 DeepSeek API Key。", "error");
-            return;
-        }
 
         const userMessage: Message = { role: 'user', content: input };
         const messagesForApi = [...(currentSession?.messages || []), userMessage];
@@ -381,33 +364,11 @@ export function AiChatPage() {
         setIsLoading(true);
 
         try {
-            const response = await fetch('https://api.deepseek.com/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    temperature: 0.6,
-                    messages: [emmaSystemPrompt, ...messagesForApi.map((m) => ({ role: m.role, content: m.content }))],
-                })
-            });
-
-            if (!response.ok) {
-                let errMsg = `请求失败 ${response.status}`;
-                try {
-                    const errBody = await response.json();
-                    errMsg = errBody?.error?.message || errBody?.message || errMsg;
-                } catch {
-                    /* ignore */
-                }
-                throw new Error(errMsg);
-            }
-
-            const data = await response.json();
-            const rawContent = data?.choices?.[0]?.message?.content;
-            if (typeof rawContent !== 'string' || !rawContent.trim()) {
-                throw new Error('接口未返回有效内容，请稍后重试');
-            }
-            const { correction, content, translation } = parseEmmaResponse(rawContent);
+            const { correction, content, translation } = await fetchEmmaChatCompletion(
+                '',
+                emmaSystemPrompt,
+                messagesForApi.map((m) => ({ role: m.role, content: m.content }))
+            );
 
             const assistantMessage = { role: 'assistant' as const, correction, content, translation, showTranslation: false };
             
@@ -430,7 +391,7 @@ export function AiChatPage() {
 
         } catch (error) {
             console.error(error);
-            const msg = error instanceof Error ? error.message : '连接失败，请检查 API Key 或网络';
+            const msg = error instanceof Error ? error.message : '连接失败，请稍后重试';
             toast(msg, 'error');
         } finally {
             setIsLoading(false);
@@ -455,71 +416,13 @@ export function AiChatPage() {
 
         // 如果还没有翻译，且不是正在翻译中
         if (!targetMessage.translation && !targetMessage.isTranslating) {
-            if (!apiKey) {
-                toast("请先设置 API Key", "error");
-                return;
-            }
-
-            // 先将状态设置为“正在翻译”并显示气泡
             const translatingMessages = currentSession.messages.map((msg, i) => 
                 i === messageIndex ? { ...msg, isTranslating: true, showTranslation: true } : msg
             );
             updateSession(currentSessionId, { messages: translatingMessages });
 
             try {
-                const response = await fetch('https://api.deepseek.com/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [
-                            { 
-                                role: 'system', 
-                                content: 'Translate the following English text into natural conversational Chinese. Return ONLY the Chinese translation without any quotes or extra text.' 
-                            },
-                            { 
-                                role: 'user', 
-                                content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${targetMessage.content}` 
-                            }
-                        ],
-                        max_tokens: 300,
-                        temperature: 0.2,
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const translation = (data?.choices?.[0]?.message?.content ?? '').trim();
-                    
-                    setPersisted((p) => {
-                        const mode = p.chatMode;
-                        const sid = p.currentSessionIdByMode[mode];
-                        return {
-                            ...p,
-                            sessionsByMode: {
-                                ...p.sessionsByMode,
-                                [mode]: p.sessionsByMode[mode].map((s) =>
-                                    s.id === sid
-                                        ? {
-                                              ...s,
-                                              messages: s.messages.map((msg) =>
-                                                  msg.role === targetFingerprint.role &&
-                                                  msg.content === targetFingerprint.content
-                                                      ? { ...msg, translation, isTranslating: false }
-                                                      : msg
-                                              ),
-                                              updatedAt: Date.now(),
-                                          }
-                                        : s
-                                ),
-                            },
-                        };
-                    });
-                } else {
-                    throw new Error("Translation failed");
-                }
-            } catch (error) {
-                console.error('Full translation error:', error);
+                const translation = await fetchEnglishToChineseTranslation('', targetMessage.content);
                 setPersisted((p) => {
                     const mode = p.chatMode;
                     const sid = p.currentSessionIdByMode[mode];
@@ -529,16 +432,30 @@ export function AiChatPage() {
                             ...p.sessionsByMode,
                             [mode]: p.sessionsByMode[mode].map((s) =>
                                 s.id === sid
-                                    ? {
-                                          ...s,
-                                          messages: s.messages.map((msg) =>
-                                              msg.role === targetFingerprint.role &&
-                                              msg.content === targetFingerprint.content
-                                                  ? { ...msg, isTranslating: false, translation: '翻译失败，请重试。' }
-                                                  : msg
-                                          ),
-                                          updatedAt: Date.now(),
-                                      }
+                                    ? { ...s, messages: s.messages.map((msg) =>
+                                          msg.role === targetFingerprint.role && msg.content === targetFingerprint.content
+                                              ? { ...msg, translation, isTranslating: false } : msg
+                                      ), updatedAt: Date.now() }
+                                    : s
+                            ),
+                        },
+                    };
+                });
+            } catch (error) {
+                console.error('Translation error:', error);
+                setPersisted((p) => {
+                    const mode = p.chatMode;
+                    const sid = p.currentSessionIdByMode[mode];
+                    return {
+                        ...p,
+                        sessionsByMode: {
+                            ...p.sessionsByMode,
+                            [mode]: p.sessionsByMode[mode].map((s) =>
+                                s.id === sid
+                                    ? { ...s, messages: s.messages.map((msg) =>
+                                          msg.role === targetFingerprint.role && msg.content === targetFingerprint.content
+                                              ? { ...msg, isTranslating: false, translation: '翻译失败，请重试。' } : msg
+                                      ), updatedAt: Date.now() }
                                     : s
                             ),
                         },
@@ -556,22 +473,15 @@ export function AiChatPage() {
 
 
 
-    // AI 自动补全单词信息
+    // AI 自动补全单词信息（走后端代理，无需前端 key）
     const completeWordInfo = async (word: string, context: string) => {
-        if (!apiKey) {
-            toast("请先设置 API Key", "error");
-            return null;
-        }
-        
         try {
-            const response = await fetch('https://api.deepseek.com/chat/completions', {
+            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
+            const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
+            const res = await fetch(url, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${apiKey}` 
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'deepseek-chat',
                     messages: [
                         { 
                             role: 'system', 
@@ -585,12 +495,10 @@ export function AiChatPage() {
                     response_format: { type: 'json_object' }
                 })
             });
-
-            if (!response.ok) throw new Error("API 请求失败");
-            
-            const data = await response.json();
-            const content = data.choices[0].message.content;
-            return JSON.parse(content);
+            if (!res.ok) throw new Error("API 请求失败");
+            const data = await res.json() as any;
+            const raw = data?.choices?.[0]?.message?.content;
+            return JSON.parse(raw);
         } catch (e) {
             console.error('Word completion error:', e);
             toast("AI 补全失败，已存入基本信息", "error");
@@ -599,41 +507,34 @@ export function AiChatPage() {
     };
 
     const translatePhrase = React.useCallback(async (text: string, context: string) => {
-        if (!apiKey) return;
-
         try {
-            const response = await fetch('https://api.deepseek.com/chat/completions', {
+            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
+            const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
+            const res = await fetch(url, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${apiKey}` 
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: 'deepseek-chat',
                     messages: [
                         { 
                             role: 'system', 
                             content: 'You are a professional translator. Translate the given English phrase briefly and accurately into Chinese based on its context. Return ONLY the translation text.' 
                         },
-                        { 
-                            role: 'user', 
-                            content: `Phrase: "${text}"\nContext: "${context}"` 
-                        }
+                        { role: 'user', content: `Phrase: "${text}"\nContext: "${context}"` }
                     ],
-                    max_tokens: 50
+                    max_tokens: 50,
+                    temperature: 0.2,
                 })
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                const translation = data.choices[0].message.content.trim();
+            if (res.ok) {
+                const data = await res.json() as any;
+                const translation = (data?.choices?.[0]?.message?.content ?? '').trim();
                 setSelectionBox(prev => ({ ...prev, translation, isLoading: false }));
             }
         } catch (error) {
             console.error('Translation error:', error);
             setSelectionBox(prev => ({ ...prev, translation: '翻译失败', isLoading: false }));
         }
-    }, [apiKey]);
+    }, []);
 
     /** 桌面 mouseup / 移动 touchend 后 selection 才稳定，需延迟读取 */
     const openSelectionPopupIfAny = React.useCallback(() => {
@@ -1069,7 +970,7 @@ export function AiChatPage() {
                                                         <div className="mt-4 flex flex-wrap items-center gap-3">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => speakEnglishLine(msg.content)}
+                                                                onClick={() => void speakEnglish(msg.content)}
                                                                 className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-stitch-primary transition-colors hover:bg-stitch-primary/5"
                                                             >
                                                                 <Volume2 className="h-4 w-4" />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trash2, Bookmark, Book, MessageSquare, ChevronDown, ChevronUp, Quote, Lightbulb, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { speakEnglish } from '@/lib/speak-english';
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 
 export function FavoritesPage() {
@@ -11,18 +12,6 @@ export function FavoritesPage() {
     const [view, setView] = React.useState<'sentences' | 'words'>('words');
     const [expandedId, setExpandedId] = React.useState<string | null>(null);
     const { toast } = useToast();
-
-    // 语音朗读功能
-    const playAudio = (e: React.MouseEvent, text: string) => {
-        if (e) e.stopPropagation();
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        // 尝试寻找一个稳定的美式英语发音
-        const englishVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Microsoft'))) || voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
-    };
 
     // 安全过滤，防止 words 不是数组或 item 为空
     const safeFavorites = React.useMemo(() => {
@@ -121,7 +110,10 @@ export function FavoritesPage() {
                                                             <span className="text-gray-400 text-sm font-normal ml-1">/{item.phonetic.replace(/\//g, '')}/</span>
                                                         )}
                                                         <button 
-                                                            onClick={(e) => playAudio(e, item.word)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                void speakEnglish(item.word);
+                                                            }}
                                                             className="p-1 rounded-full hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition-colors"
                                                             title="播放发音"
                                                         >

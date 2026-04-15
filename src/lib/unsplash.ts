@@ -23,11 +23,15 @@ export async function fetchUnsplashImages(query: string, options?: { perPage?: n
 }
 
 function safeGetUnsplashApiKey(): string {
+    // 优先使用环境变量（Vercel 部署时在 VITE_UNSPLASH_ACCESS_KEY 中配置）
+    const envKey = (import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined)?.trim();
+    if (envKey) return envKey;
+
+    // 其次使用用户在设置页填写的 key
     try {
         const raw = localStorage.getItem('unsplash_api_key');
         if (typeof raw !== 'string') return '';
         const trimmed = raw.trim();
-        // useLocalStorage 会 JSON.stringify 存储字符串，因此这里优先 JSON.parse 还原
         try {
             const parsed = JSON.parse(trimmed);
             return typeof parsed === 'string' ? parsed.trim() : '';

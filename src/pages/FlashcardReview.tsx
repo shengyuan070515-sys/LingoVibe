@@ -21,6 +21,7 @@ import { useReviewLogStore } from '@/store/reviewLogStore';
 import { useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
 import { todayKey, toLocalDateKey } from '@/lib/learning-analytics';
 import type { Page } from '@/App';
+import { speakEnglish } from '@/lib/speak-english';
 
 interface FlashcardReviewPageProps {
     onNavigate: (page: Page) => void;
@@ -133,9 +134,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
     );
 
     const playWord = (text: string) => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-US';
-        window.speechSynthesis.speak(u);
+        void speakEnglish(text);
     };
 
     const progressRatio =

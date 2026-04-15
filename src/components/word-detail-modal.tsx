@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { VisualDictionaryCardBody } from "@/components/reading/visual-dictionary-card-body";
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { fetchUnsplashImages } from "@/lib/unsplash";
+import { speakEnglish } from '@/lib/speak-english';
 
 interface WordDetailModalProps {
     word: WordBankItem;
@@ -86,17 +87,9 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
         }
     };
 
-    // 语音朗读功能
     const playAudio = (text: string) => {
         setIsSpeaking(true);
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Microsoft'))) || voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
+        void speakEnglish(text).finally(() => setIsSpeaking(false));
     };
 
     const handleDownloadCard = () => {

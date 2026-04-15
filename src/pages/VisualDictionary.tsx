@@ -11,7 +11,6 @@ import {
     Bookmark,
     Volume2,
 } from 'lucide-react';
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { useToast } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +21,6 @@ import { fetchUnsplashImages } from "@/lib/unsplash";
 import { recordVisualLookup } from "@/store/learningAnalyticsStore";
 
 export function VisualDictionaryPage() {
-    const [chatApiKey] = useLocalStorage('chat_api_key', '');
     const { words, addWord } = useWordBankStore();
     
     const [query, setQuery] = React.useState('');
@@ -120,61 +118,47 @@ export function VisualDictionaryPage() {
 
     const handleSearch = async () => {
         if (!query.trim()) return;
-        
-        if (!chatApiKey) {
-            console.error("[VisualDictionary] Missing DeepSeek API Key (chat_api_key)");
-            toast("Please configure AI Chat API Key in Settings first.", "error");
-            return;
-        }
 
         setIsLoading(true);
         try {
-            console.log(`[VisualDictionary] Starting search for: ${query}`);
-            
-            // Concurrent requests to LLM and Unsplash
-            const [llmResponse, unsplashResponse] = await Promise.all([
-                fetch('https://api.deepseek.com/chat/completions', {
+            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
+            const proxyUrl = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
+
+            // Concurrent requests: AI proxy + Unsplash
+            const [proxyRes, imageUrls] = await Promise.all([
+                fetch(proxyUrl, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Authorization': `Bearer ${chatApiKey}` 
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'deepseek-chat',
                         messages: [
-                            { 
-                                role: 'system', 
-                                content: 'You are a visual dictionary assistant. Return ONLY JSON format.' 
+                            {
+                                role: 'system',
+                                content: 'You are a visual dictionary assistant. Return ONLY JSON format.',
                             },
-                            { 
-                                role: 'user', 
-                                content: `For the word "${query}", provide: 
-                                1. definition: a short English definition (under 15 words).
-                                2. synonyms: 3 English synonyms.
-                                3. color: a HEX color code representing the word's mood/vibe.
-                                Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}` 
-                            }
+                            {
+                                role: 'user',
+                                content: `For the word "${query}", provide:
+1. definition: a short English definition (under 15 words).
+2. synonyms: 3 English synonyms.
+3. color: a HEX color code representing the word's mood/vibe.
+Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}`,
+                            },
                         ],
-                        response_format: { type: 'json_object' }
-                    })
-                }).catch(err => {
-                    console.error("[VisualDictionary] DeepSeek API Fetch Error:", err);
-                    return { ok: false, statusText: err.message } as Response;
+                        response_format: { type: 'json_object' },
+                        temperature: 0.3,
+                    }),
                 }),
-                fetchUnsplashImages(query, { perPage: 3 })
+                fetchUnsplashImages(query, { perPage: 3 }),
             ]);
 
-            if (llmResponse && !llmResponse.ok) {
-                console.error("[VisualDictionary] DeepSeek API Error:", llmResponse.status, llmResponse.statusText);
-                throw new Error(`DeepSeek API failed: ${llmResponse.statusText}`);
+            if (!proxyRes.ok) {
+                const err = await proxyRes.json().catch(() => ({}));
+                throw new Error((err as any)?.error || `查词失败 ${proxyRes.status}`);
             }
-            
-            const llmData = await llmResponse!.json();
-            const llmContent = JSON.parse(llmData.choices[0].message.content);
-            
-            const imageUrls = Array.isArray(unsplashResponse) ? unsplashResponse : [];
 
-            console.log(`[VisualDictionary] Images for "${query}":`, imageUrls);
+            const data = await proxyRes.json() as any;
+            const llmContent = JSON.parse(data.choices[0].message.content);
+            const safeImages = Array.isArray(imageUrls) ? imageUrls : [];
 
             const newEntry: Partial<Omit<WordBankItem, 'id' | 'addedAt' | 'nextReviewDate' | 'interval' | 'level'>> = {
                 word: query.toLowerCase(),
@@ -182,12 +166,10 @@ export function VisualDictionaryPage() {
                 translation: llmContent.definition,
                 synonyms: llmContent.synonyms || [],
                 color: llmContent.color || '#F3F4F6',
-                images: imageUrls,
+                images: safeImages,
             };
-            
-            setCurrentEntry({ ...newEntry, id: '', addedAt: Date.now(), nextReviewDate: Date.now(), interval: 1, level: 0 } as WordBankItem);
 
-            // 添加到搜索历史（生词本仅可通过侧边栏记录上的「书本」按钮手动添加）
+            setCurrentEntry({ ...newEntry, id: '', addedAt: Date.now(), nextReviewDate: Date.now(), interval: 1, level: 0 } as WordBankItem);
             addToSearchHistory(query);
             setQuery('');
             recordVisualLookup();

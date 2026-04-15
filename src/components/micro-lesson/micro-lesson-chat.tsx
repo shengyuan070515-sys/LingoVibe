@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Loader2, Mic, Send, Languages } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useEnglishSpeechRecognition } from '@/hooks/use-english-speech-recognition';
 import {
     type Message,
@@ -41,7 +40,7 @@ function assistantBubbleEnglish(msg: Message): string {
     }
     c = c
         .replace(
-            /(?:\s+[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef][\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\s，。！？、；：""''（）《》\-\n·]*)\s*$/u,
+            /(?:\s+[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef][\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\s，。！？、；："" ''（）《》\-\n·]*)\s*$/u,
             ''
         )
         .trim();
@@ -56,7 +55,6 @@ type MicroLessonChatProps = {
 };
 
 export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress }: MicroLessonChatProps) {
-    const [apiKey] = useLocalStorage('chat_api_key', '');
     const { toast } = useToast();
     const markChatRoundDone = useDailyLoopStore((s) => s.markChatRoundDone);
 
@@ -101,10 +99,6 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
     const handleSend = async () => {
         const text = input.trim();
         if (!text || isLoading) return;
-        if (!apiKey.trim()) {
-            toast('请先在设置页填写 DeepSeek API Key（与 AI 对话相同）', 'error');
-            return;
-        }
 
         const userMessage: Message = { role: 'user', content: text };
         const next = [...messages, userMessage];
@@ -116,7 +110,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         try {
             const payload = next.map((m) => ({ role: m.role, content: m.content }));
             const { correction, content, translation } = await fetchEmmaChatCompletion(
-                apiKey.trim(),
+                '',
                 emmaCoffeeShopBaristaPrompt,
                 payload
             );
@@ -136,7 +130,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
             markChatRoundDone();
         } catch (e) {
             console.error(e);
-            const msg = e instanceof Error ? e.message : '连接失败，请检查 API Key 或网络';
+            const msg = e instanceof Error ? e.message : '连接失败，请稍后重试';
             toast(msg, 'error');
         } finally {
             setIsLoading(false);
@@ -158,10 +152,6 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         }
 
         if (target.isTranslating) return;
-        if (!apiKey.trim()) {
-            toast('请先在设置页填写 API Key', 'error');
-            return;
-        }
 
         const fpContent = target.content;
         const englishForApi = assistantBubbleEnglish(target);
@@ -170,7 +160,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         );
 
         try {
-            const translation = await fetchEnglishToChineseTranslation(apiKey.trim(), englishForApi);
+            const translation = await fetchEnglishToChineseTranslation('', englishForApi);
             onMessagesChange((prev) =>
                 prev.map((m, i) =>
                     i === index && m.role === 'assistant' && m.content === fpContent
@@ -204,7 +194,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-800">AI 店员 · Emma</p>
                     <p className="text-xs text-slate-500">
-                        文本或英文语音输入 · 真实对话（DeepSeek）
+                        文本或英文语音输入 · 真实 AI 对话
                         {!speechSupported ? ' · 当前环境无语音识别' : null}
                     </p>
                 </div>

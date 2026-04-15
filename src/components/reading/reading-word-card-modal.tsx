@@ -4,25 +4,7 @@ import { Button } from '@/components/ui/button';
 import { VisualDictionaryCardBody } from '@/components/reading/visual-dictionary-card-body';
 import { fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
 import { fetchUnsplashImages } from '@/lib/unsplash';
-
-function speakEnglishWord(text: string, onEnd: () => void) {
-    const t = text.trim();
-    if (!t || typeof window === 'undefined' || !window.speechSynthesis) {
-        onEnd();
-        return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'en-US';
-    u.onend = onEnd;
-    u.onerror = onEnd;
-    const voices = window.speechSynthesis.getVoices();
-    const v =
-        voices.find((x) => x.lang === 'en-US' && (x.name.includes('Google') || x.name.includes('Microsoft'))) ||
-        voices.find((x) => x.lang.startsWith('en'));
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
-}
+import { speakEnglish } from '@/lib/speak-english';
 
 export interface ReadingWordCardModalProps {
     isOpen: boolean;
@@ -109,8 +91,8 @@ export function ReadingWordCardModal({
     };
 
     const playWord = () => {
-        speakEnglishWord(word, () => setIsSpeaking(false));
         setIsSpeaking(true);
+        void speakEnglish(word).finally(() => setIsSpeaking(false));
     };
 
     if (!isOpen) return null;

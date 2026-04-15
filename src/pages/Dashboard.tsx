@@ -22,6 +22,7 @@ import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featu
 import { useReadingLibraryStore } from '@/store/readingLibraryStore';
 import { selectDueWords } from '@/lib/srs-utils';
 import { cn } from '@/lib/utils';
+import { speakEnglish } from '@/lib/speak-english';
 
 const READING_HERO =
     'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=1400&q=80&auto=format&fit=crop';
@@ -56,20 +57,6 @@ function cefrFromWordLevel(level: number): string {
     return 'C1';
 }
 
-function speakWord(text: string) {
-    const t = text.trim();
-    if (!t || typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    u.lang = 'en-US';
-    const voices = window.speechSynthesis.getVoices();
-    const v =
-        voices.find((x) => x.lang === 'en-US' && (x.name.includes('Google') || x.name.includes('Microsoft'))) ||
-        voices.find((x) => x.lang.startsWith('en'));
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
-}
-
 const WEEK_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 function RecentWordCard({ w }: { w: WordBankItem }) {
@@ -85,7 +72,7 @@ function RecentWordCard({ w }: { w: WordBankItem }) {
                     type="button"
                     aria-label={`朗读 ${w.word}`}
                     className="text-stitch-on-surface-variant transition-colors hover:text-stitch-primary"
-                    onClick={() => speakWord(w.word)}
+                    onClick={() => void speakEnglish(w.word)}
                 >
                     <Volume2 className="h-4 w-4" />
                 </button>

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useWordBankStore } from '@/store/wordBankStore';
 import { fetchTodaysMoodGreeting } from '@/lib/ai-chat';
 import { todayKey } from '@/lib/learning-analytics';
@@ -13,7 +12,6 @@ function fallbackLine(word: string): string {
 
 export function DashboardTodaysMood({ className }: { className?: string }) {
     const words = useWordBankStore((s) => s.words);
-    const [apiKey] = useLocalStorage('chat_api_key', '');
 
     const latestWord = React.useMemo(() => {
         const list = (words || []).filter((w) => w?.type === 'word' && w.word?.trim());
@@ -43,17 +41,10 @@ export function DashboardTodaysMood({ className }: { className?: string }) {
             /* ignore */
         }
 
-        if (!apiKey.trim()) {
-            const fb = fallbackLine(latestWord.word);
-            setLine(fb);
-            setErr(false);
-            return;
-        }
-
         let cancelled = false;
         setLoading(true);
         setErr(false);
-        fetchTodaysMoodGreeting(apiKey.trim(), latestWord.word)
+        fetchTodaysMoodGreeting('', latestWord.word)
             .then((t) => {
                 if (cancelled) return;
                 const clean = t.trim() || fallbackLine(latestWord.word);
@@ -76,7 +67,7 @@ export function DashboardTodaysMood({ className }: { className?: string }) {
         return () => {
             cancelled = true;
         };
-    }, [latestWord, apiKey]);
+    }, [latestWord]);
 
     return (
         <section
@@ -117,11 +108,6 @@ export function DashboardTodaysMood({ className }: { className?: string }) {
                             </p>
                         )}
                     </div>
-                    {!apiKey.trim() ? (
-                        <p className="mt-4 text-xs leading-relaxed text-slate-500">
-                            在设置中填写 DeepSeek API Key 后，可每日自动生成 AI 问候；当前为本地备用句式。
-                        </p>
-                    ) : null}
                 </>
             )}
         </section>

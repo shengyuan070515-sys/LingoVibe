@@ -1,76 +1,25 @@
 import * as React from 'react';
-import { useLocalStorage, emitLocalStorageSync } from "@/hooks/use-local-storage";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, UserRound } from 'lucide-react';
-import { useWordBankStore } from "@/store/wordBankStore";
-import { testWordBankApiKey } from "@/lib/word-utils";
+import { Image, UserRound } from 'lucide-react';
 
 export function SettingsPage() {
-    const [chatApiKey, setChatApiKey] = useLocalStorage('chat_api_key', '');
-    const [readingApiKey, setReadingApiKey] = useLocalStorage('reading_api_key', '');
-    const [unsplashApiKey, setUnsplashApiKey] = useLocalStorage('unsplash_api_key', 'E40fl55KwMFbFkYW-yAaIxPbCAEur8W2MpQIDQm6ZT0');
-    const [wordBankApiKey, setWordBankApiKey] = useLocalStorage('wordbank_api_key', '');
+    const [unsplashApiKey, setUnsplashApiKey] = useLocalStorage('unsplash_api_key', '');
     const [displayName, setDisplayName] = useLocalStorage('lingovibe_display_name', '');
-    const { refreshMissingDetails } = useWordBankStore();
-    
-    const [chatInput, setChatInput] = React.useState(chatApiKey);
-    const [readingInput, setReadingInput] = React.useState(readingApiKey);
+
     const [unsplashInput, setUnsplashInput] = React.useState(unsplashApiKey);
-    const [wordBankKeyInput, setWordBankKeyInput] = React.useState(wordBankApiKey);
     const [displayNameInput, setDisplayNameInput] = React.useState(displayName);
 
-    React.useEffect(() => {
-        setDisplayNameInput(displayName);
-    }, [displayName]);
+    React.useEffect(() => { setDisplayNameInput(displayName); }, [displayName]);
+    React.useEffect(() => { setUnsplashInput(unsplashApiKey); }, [unsplashApiKey]);
 
-    React.useEffect(() => {
-        setChatInput(chatApiKey);
-    }, [chatApiKey]);
-    React.useEffect(() => {
-        setReadingInput(readingApiKey);
-    }, [readingApiKey]);
-    React.useEffect(() => {
-        setUnsplashInput(unsplashApiKey);
-    }, [unsplashApiKey]);
-    React.useEffect(() => {
-        setWordBankKeyInput(wordBankApiKey);
-    }, [wordBankApiKey]);
-    
     const { toast } = useToast();
-
-    const handleTestWordBankKey = async () => {
-        const result = await testWordBankApiKey(wordBankKeyInput);
-        if (result.ok) toast('生词本专属 Key 校验通过', 'success');
-        else toast(`生词本专属 Key 校验失败：${result.message}`, 'error');
-    };
-
-    const handleSave = async () => {
-        setChatApiKey(chatInput);
-        setReadingApiKey(readingInput);
-        setUnsplashApiKey(unsplashInput);
-        setWordBankApiKey(wordBankKeyInput);
-        toast('所有 API 密钥已成功保存!', 'success');
-
-        try {
-            window.localStorage.setItem('wordbank_api_key', JSON.stringify(wordBankKeyInput.trim()));
-            emitLocalStorageSync('wordbank_api_key');
-        } catch {
-            /* ignore */
-        }
-
-        const test = await testWordBankApiKey(wordBankKeyInput);
-        if (!test.ok) {
-            toast(`生词本补全已跳过：生词本专属 Key 无效（${test.message}）`, 'error');
-            return;
-        }
-
-        refreshMissingDetails();
-    };
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
+            {/* 个人资料 */}
             <Card className="border-none shadow-lg bg-white/80 backdrop-blur-md">
                 <CardHeader>
                     <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -108,104 +57,57 @@ export function SettingsPage() {
                 </CardContent>
             </Card>
 
+            {/* 图片配置 */}
             <Card className="border-none shadow-lg bg-white/80 backdrop-blur-md">
                 <CardHeader>
                     <CardTitle className="text-xl font-bold flex items-center gap-2">
-                        <Save className="h-5 w-5 text-blue-600" />
-                        API 密钥管理
+                        <Image className="h-5 w-5 text-blue-600" />
+                        图片配置（可选）
                     </CardTitle>
                     <CardDescription>
-                        为不同模块分别配置 Key。每日阅读的「联网搜索」使用 Tavily，密钥只在 Vercel / 本地 Serverless
-                        环境变量 <code className="rounded bg-slate-100 px-1">TAVILY_API_KEY</code> 中配置，无需在此页填写。
+                        配置后生词卡片与视觉查词将显示真实搜索图片；不配置时使用默认占位图，不影响核心功能。
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid gap-6">
-                        <div className="space-y-2">
-                            <label htmlFor="chat-key" className="text-sm font-semibold text-gray-700">
-                                AI 对话专属 Key (DeepSeek)
-                            </label>
-                            <input
-                                id="chat-key"
-                                type="password"
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label htmlFor="reading-key" className="text-sm font-semibold text-gray-700">
-                                每日阅读 · 模型 Key (DeepSeek)
-                            </label>
-                            <p className="text-xs text-gray-500">用于翻译、语法分析、难度估计等，与对话 Key 相互独立。</p>
-                            <input
-                                id="reading-key"
-                                type="password"
-                                value={readingInput}
-                                onChange={(e) => setReadingInput(e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            />
-                        </div>
-
-                        <div className="rounded-xl border border-teal-100 bg-teal-50/50 px-4 py-3 text-xs leading-relaxed text-teal-900">
-                            <p className="font-semibold text-teal-950">每日阅读 · Tavily（联网搜索）</p>
-                            <p className="mt-2 text-teal-900/90">
-                                在 Vercel 项目 Settings → Environment Variables 添加{' '}
-                                <code className="rounded bg-white/80 px-1">TAVILY_API_KEY</code>；本地联调时在仓库根目录{' '}
-                                <code className="rounded bg-white/80 px-1">.env</code> 同样配置，并用{' '}
-                                <code className="rounded bg-white/80 px-1">vercel dev</code> 启动 API。前端{' '}
-                                <code className="rounded bg-white/80 px-1">.env</code> 仍需{' '}
-                                <code className="rounded bg-white/80 px-1">VITE_READING_API_BASE</code>。
-                            </p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label htmlFor="unsplash-key" className="text-sm font-semibold text-gray-700 flex items-center justify-between">
-                                视觉查词专属 Key (Unsplash)
-                                <a href="https://unsplash.com/developers" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">获取密钥</a>
-                            </label>
-                            <input
-                                id="unsplash-key"
-                                type="password"
-                                value={unsplashInput}
-                                onChange={(e) => setUnsplashInput(e.target.value)}
-                                placeholder="Access Key"
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label htmlFor="wordbank-key" className="text-sm font-semibold text-gray-700">
-                                生词本专属 - API Key（可选）
-                            </label>
-                            <input
-                                id="wordbank-key"
-                                type="password"
-                                value={wordBankKeyInput}
-                                onChange={(e) => setWordBankKeyInput(e.target.value)}
-                                placeholder="Bearer Token / sk-...（如需）"
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            />
-                            <div className="flex gap-2 pt-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="flex-1 rounded-xl"
-                                    onClick={handleTestWordBankKey}
-                                >
-                                    测试生词本专属 Key
-                                </Button>
-                            </div>
-                        </div>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <label htmlFor="unsplash-key" className="text-sm font-semibold text-gray-700 flex items-center justify-between">
+                            Unsplash Access Key
+                            <a href="https://unsplash.com/developers" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">
+                                免费申请 →
+                            </a>
+                        </label>
+                        <input
+                            id="unsplash-key"
+                            type="password"
+                            value={unsplashInput}
+                            onChange={(e) => setUnsplashInput(e.target.value)}
+                            placeholder="粘贴你的 Unsplash Access Key"
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        />
                     </div>
-                    
-                    <Button onClick={handleSave} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-200 transition-all active:scale-[0.98]">
-                        <Save className="mr-2 h-4 w-4" />
-                        保存所有配置
+                    <Button
+                        type="button"
+                        className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => {
+                            setUnsplashApiKey(unsplashInput.trim());
+                            toast('Unsplash Key 已保存', 'success');
+                        }}
+                    >
+                        保存
                     </Button>
+                </CardContent>
+            </Card>
+
+            {/* 服务状态说明 */}
+            <Card className="border-none shadow-lg bg-white/80 backdrop-blur-md">
+                <CardHeader>
+                    <CardTitle className="text-sm font-semibold text-gray-500">关于 AI 服务</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                        AI 对话、生词查词、阅读分析等功能均由 LingoVibe 服务端统一提供，无需自行配置 API Key。
+                        如遇服务异常，请稍后重试或联系管理员。
+                    </p>
                 </CardContent>
             </Card>
         </div>

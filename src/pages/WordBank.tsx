@@ -7,6 +7,7 @@ import type { Page } from '@/App';
 import { WordDetailModal } from '@/components/word-detail-modal';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { speakEnglish } from '@/lib/speak-english';
 import type { WordBankSortMode } from '@/store/wordBankStore';
 
 /** 每页最多显示的词条数，满页后进入下一页 */
@@ -89,17 +90,6 @@ export function WordBankPage({ onNavigate }: { onNavigate?: (page: Page) => void
         },
         [totalListPages]
     );
-
-    // 语音朗读功能
-    const playAudio = (e: React.MouseEvent, text: string) => {
-        if (e) e.stopPropagation();
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Microsoft'))) || voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) utterance.voice = englishVoice;
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
-    };
 
     return (
         <div className="min-h-screen max-w-full min-w-0 overflow-x-hidden bg-gray-50 px-3 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-4 sm:py-5 md:p-6">
@@ -416,9 +406,9 @@ export function WordBankPage({ onNavigate }: { onNavigate?: (page: Page) => void
                                         variant="ghost"
                                         size="sm"
                                         onClick={(e) => {
+                                            e.stopPropagation();
                                             setSpeakingId(item.id);
-                                            playAudio(e, item.word);
-                                            window.setTimeout(() => setSpeakingId(null), 900);
+                                            void speakEnglish(item.word).finally(() => setSpeakingId(null));
                                         }}
                                         className={
                                             speakingId === item.id
