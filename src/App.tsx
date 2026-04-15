@@ -110,8 +110,8 @@ function App() {
                 </Button>
                 <Separator orientation="vertical" className="mx-0.5 hidden h-6 sm:mx-2 sm:block" />
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                  XM
-                </div>
+  {displayName ? displayName.slice(0, 2).toUpperCase() : 'LV'}
+</div>
               </div>
             </header> 
             
