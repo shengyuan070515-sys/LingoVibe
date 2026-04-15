@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import {
     Check,
@@ -14,7 +15,6 @@ import {
 import { DashboardTodaysMood } from '@/components/dashboard/dashboard-todays-mood';
 import { DashboardDailyLoop } from '@/components/dashboard/dashboard-daily-loop';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import type { Page } from '@/App';
 import { useWordBankStore, type WordBankItem } from '@/store/wordBankStore';
 import { useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
 import { computeLearningStreak, todayKey, toLocalDateKey } from '@/lib/learning-analytics';
@@ -84,7 +84,8 @@ function RecentWordCard({ w }: { w: WordBankItem }) {
     );
 }
 
-export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void }) {
+export function DashboardPage() {
+    const navigate = useNavigate();
     const [nickname] = useLocalStorage('lingovibe_display_name', '');
     const displayName = nickname.trim() || '语言学习者';
 
@@ -210,7 +211,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                         </div>
                         <button
                             type="button"
-                            onClick={() => onNavigate('daily-reading')}
+                            onClick={() => navigate('/reading')}
                             className="mt-6 flex items-center gap-1 text-sm font-bold text-stitch-primary transition-all hover:gap-2"
                         >
                             去完成 <ChevronRight className="h-4 w-4" />
@@ -286,7 +287,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                     <h2 className="font-headline text-2xl font-bold text-stitch-on-surface">最近学习</h2>
                     <button
                         type="button"
-                        onClick={() => onNavigate('wordbank')}
+                        onClick={() => navigate('/wordbank')}
                         className="text-sm font-bold text-stitch-primary hover:underline"
                     >
                         打开生词本
@@ -298,7 +299,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                         <p className="mt-2 text-sm text-stitch-on-surface-variant">在视觉查词、AI 对话或每日阅读里收录后会出现在这里。</p>
                         <button
                             type="button"
-                            onClick={() => onNavigate('visual-dictionary')}
+                            onClick={() => navigate('/visual-dictionary')}
                             className="mt-5 rounded-full bg-stitch-primary px-6 py-2 text-sm font-bold text-white shadow-md transition hover:opacity-95"
                         >
                             去视觉查词
@@ -336,7 +337,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                             <p className="mb-4 line-clamp-2 text-sm leading-relaxed opacity-90">{readingCard.snippet}</p>
                             <button
                                 type="button"
-                                onClick={() => onNavigate('daily-reading')}
+                                onClick={() => navigate('/reading')}
                                 className="rounded-full border border-white/30 bg-white/20 px-6 py-2 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white hover:text-stitch-on-surface"
                             >
                                 去每日阅读
@@ -356,7 +357,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                             </p>
                             <button
                                 type="button"
-                                onClick={() => onNavigate('ai-chat')}
+                                onClick={() => navigate('/chat')}
                                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-stitch-tertiary transition-colors hover:bg-stitch-tertiary-fixed-dim"
                             >
                                 <PlayCircle className="h-5 w-5 fill-current" />
@@ -378,7 +379,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                             <div className="flex flex-wrap items-center gap-4">
                                 <button
                                     type="button"
-                                    onClick={() => onNavigate('flashcard-review')}
+                                    onClick={() => navigate('/flashcard')}
                                     className="rounded-full bg-stitch-secondary px-8 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-95"
                                 >
                                     开始复习
@@ -398,7 +399,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: Page) => void
                     <DashboardTodaysMood />
                 </div>
                 <div className="lg:col-span-7">
-                    <DashboardDailyLoop onNavigate={onNavigate} />
+                    <DashboardDailyLoop />
                 </div>
             </div>
         </div>

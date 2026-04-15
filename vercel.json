@@ -5,6 +5,9 @@
       "maxDuration": 60
     }
   },
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
   "crons": [
     {
       "path": "/api/reading-featured-cron",

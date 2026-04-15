@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Home,
     BookOpen,
@@ -24,34 +25,30 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import { Page } from '@/App';
 import { cn } from '@/lib/utils';
 
-interface AppSidebarProps {
-    activePage: Page;
-    setActivePage: (page: Page) => void;
-}
+const menuItems: { path: string; icon: React.ElementType; label: string }[] = [
+    { path: '/', icon: Home, label: '首页' },
+    { path: '/courses', icon: GraduationCap, label: '学习路径' },
+    { path: '/wordbank', icon: Book, label: '生词本' },
+    { path: '/flashcard', icon: Layers, label: '闪卡复习' },
+    { path: '/stats', icon: BarChart3, label: '学习统计' },
+    { path: '/chat', icon: Bot, label: 'AI 对话' },
+    { path: '/visual-dictionary', icon: ImageIcon, label: '视觉查词' },
+    { path: '/reading', icon: BookOpen, label: '每日阅读' },
+    { path: '/achievements', icon: Trophy, label: '成就与奖励' },
+    { path: '/community', icon: MessageSquare, label: '社区交流' },
+];
 
-export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
+export function AppSidebar() {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { isMobile, setOpen } = useSidebar();
 
-    const navigate = (id: Page) => {
-        setActivePage(id);
+    const go = (path: string) => {
+        navigate(path);
         if (isMobile) setOpen(false);
     };
-
-    const menuItems: { id: Page; icon: React.ElementType; label: string }[] = [
-        { id: 'dashboard', icon: Home, label: '首页' },
-        { id: 'courses', icon: GraduationCap, label: '学习路径' },
-        { id: 'wordbank', icon: Book, label: '生词本' },
-        { id: 'flashcard-review', icon: Layers, label: '闪卡复习' },
-        { id: 'stats', icon: BarChart3, label: '学习统计' },
-        { id: 'ai-chat', icon: Bot, label: 'AI 对话' },
-        { id: 'visual-dictionary', icon: ImageIcon, label: '视觉查词' },
-        { id: 'daily-reading', icon: BookOpen, label: '每日阅读' },
-        { id: 'achievements', icon: Trophy, label: '成就与奖励' },
-        { id: 'community', icon: MessageSquare, label: '社区交流' },
-    ];
 
     return (
         <Sidebar
@@ -75,8 +72,11 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
             <SidebarContent className="space-y-1 px-2">
                 <SidebarMenu className="space-y-1">
                     {menuItems.map((item) => (
-                        <SidebarMenuItem key={item.id}>
-                            <SidebarMenuButton active={activePage === item.id} onClick={() => navigate(item.id)}>
+                        <SidebarMenuItem key={item.path}>
+                            <SidebarMenuButton
+                                active={location.pathname === item.path}
+                                onClick={() => go(item.path)}
+                            >
                                 <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
                                 <span>{item.label}</span>
                             </SidebarMenuButton>
@@ -88,7 +88,7 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
             <SidebarFooter className="mt-auto space-y-1 border-slate-200/15 px-2 pt-2">
                 <button
                     type="button"
-                    onClick={() => navigate('daily-reading')}
+                    onClick={() => go('/reading')}
                     className="mb-4 w-full rounded-xl bg-stitch-primary py-3 text-sm font-bold text-white shadow-md transition-transform active:scale-[0.98]"
                 >
                     开始今日学习
@@ -97,8 +97,8 @@ export function AppSidebar({ activePage, setActivePage }: AppSidebarProps) {
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             className="font-medium text-slate-600 hover:text-stitch-primary"
-                            active={activePage === 'settings'}
-                            onClick={() => navigate('settings')}
+                            active={location.pathname === '/settings'}
+                            onClick={() => go('/settings')}
                         >
                             <HelpCircle className="h-4 w-4 shrink-0" />
                             <span>帮助与设置</span>

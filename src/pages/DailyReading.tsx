@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { BookOpen, Globe, Loader2, Search, Sparkles, Upload } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
@@ -47,11 +48,8 @@ function excerptFromArticle(a: { content: string; summaryText?: string; summaryO
     return src.length > 160 ? `${src.slice(0, 160)}…` : src;
 }
 
-export interface DailyReadingPageProps {
-    onNavigateToSettings?: () => void;
-}
-
-export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps) {
+export function DailyReadingPage() {
+    const navigate = useNavigate();
     const articles = useReadingLibraryStore((s) => s.articles);
     const addOrGetByUrl = useReadingLibraryStore((s) => s.addOrGetByUrl);
     const addUserImport = useReadingLibraryStore((s) => s.addUserImport);
@@ -280,7 +278,6 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                 key={openId}
                 articleId={openId}
                 onBack={() => setOpenId(null)}
-                onNavigateToSettings={onNavigateToSettings}
             />
         );
     }
@@ -325,7 +322,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                         <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-teal-800 ring-1 ring-teal-100">
                             今日 {featuredDateKey}
                         </span>
-                    ) : null}
+                    )}
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600">{FEATURED_SOURCES_LINE}</p>
                 {featuredLoading ? (
@@ -359,7 +356,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                                 <p className="mt-2 line-clamp-2 text-sm font-semibold leading-snug text-slate-800">{item.title}</p>
                                 {item.snippet ? (
                                     <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-600">{item.snippet}</p>
-                                ) : null}
+                                )}
                                 <Button
                                     type="button"
                                     size="sm"
@@ -379,7 +376,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     </ul>
                 )}
             </section>
-            ) : null}
+            )}
 
             {activeTab === 'search' ? (
             <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
@@ -432,7 +429,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                             </li>
                         ))}
                     </ul>
-                ) : null}
+                )}
                 {hits.length > 0 ? (
                     <Button
                         type="button"
@@ -443,9 +440,9 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                         {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         将选中项入库
                     </Button>
-                ) : null}
+                )}
             </section>
-            ) : null}
+            )}
 
             {activeTab === 'import' ? (
             <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm ring-1 ring-white/80 backdrop-blur-sm">
@@ -471,7 +468,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     加入书库
                 </Button>
             </section>
-            ) : null}
+            )}
 
             {activeTab === 'library' ? (
             <section>
@@ -500,7 +497,7 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                                         <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-600">
                                             {preview}
                                         </p>
-                                    ) : null}
+                                    )}
                                     <p className="mt-2 text-[11px] text-slate-500">
                                         {a.sourceType === 'user_import' ? '用户导入' : '联网精选'} ·{' '}
                                         {new Date(a.fetchedAt).toLocaleDateString()}
@@ -535,18 +532,18 @@ export function DailyReadingPage({ onNavigateToSettings }: DailyReadingPageProps
                     </ul>
                 )}
             </section>
-            ) : null}
+            )}
 
             <p className="text-[11px] leading-relaxed text-slate-500">
                 联网搜索使用部署端的 Tavily（环境变量 TAVILY_API_KEY）；正文抽取仍经 Serverless。前端需配置
                 VITE_READING_API_BASE。翻译与难度估计使用「设置」中的每日阅读 DeepSeek Key。
             </p>
 
-            {onNavigateToSettings ? (
-                <Button type="button" variant="outline" className="w-fit" onClick={onNavigateToSettings}>
+            {(
+                <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
                     打开设置
                 </Button>
-            ) : null}
+            )}
         </div>
     );
 }

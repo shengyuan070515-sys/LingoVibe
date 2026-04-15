@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import {
     ChevronLeft,
@@ -20,12 +21,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReviewLogStore } from '@/store/reviewLogStore';
 import { useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
 import { todayKey, toLocalDateKey } from '@/lib/learning-analytics';
-import type { Page } from '@/App';
 import { speakEnglish } from '@/lib/speak-english';
-
-interface FlashcardReviewPageProps {
-    onNavigate: (page: Page) => void;
-}
 
 function escapeRegExp(s: string) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -59,7 +55,8 @@ function ExampleWithHighlight({ sentence, word }: { sentence: string; word: stri
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 纪要 D1a/D3a/H1：仅单词闪卡，纯本地，不依赖 API */
-export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
+export function FlashcardReviewPage() {
+    const navigate = useNavigate();
     const words = useWordBankStore((s) => s.words);
     const applySrsReviewOutcome = useWordBankStore((s) => s.applySrsReviewOutcome);
     const markReviewQueueDone = useDailyLoopStore((s) => s.markReviewQueueDone);
@@ -194,7 +191,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                     variant="ghost"
                     size="sm"
                     className="shrink-0 gap-1 px-2 text-stitch-on-surface-variant hover:text-stitch-on-surface"
-                    onClick={() => onNavigate('dashboard')}
+                    onClick={() => navigate('/')}
                 >
                     <ChevronLeft className="h-4 w-4" />
                     首页
@@ -222,7 +219,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                 <div className="flex shrink-0 gap-2 sm:gap-3">
                     <button
                         type="button"
-                        onClick={() => onNavigate('settings')}
+                        onClick={() => navigate('/settings')}
                         className="rounded-xl bg-stitch-surface-container-low p-3 text-stitch-on-surface-variant transition-colors hover:bg-stitch-surface-container-high"
                         aria-label="设置"
                     >
@@ -230,7 +227,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                     </button>
                     <button
                         type="button"
-                        onClick={() => onNavigate('dashboard')}
+                        onClick={() => navigate('/')}
                         className="rounded-xl bg-stitch-surface-container-low p-3 text-stitch-on-surface-variant transition-colors hover:bg-stitch-surface-container-high"
                         aria-label="关闭"
                     >
@@ -272,7 +269,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                     <Button
                         type="button"
                         className="mt-6 rounded-xl bg-stitch-primary px-8 text-white hover:bg-[#2563eb]"
-                        onClick={() => onNavigate('dashboard')}
+                        onClick={() => navigate('/')}
                     >
                         回首页
                     </Button>
@@ -420,7 +417,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                             </div>
                             <button
                                 type="button"
-                                onClick={() => onNavigate('wordbank')}
+                                onClick={() => navigate('/wordbank')}
                                 className="mt-6 w-full py-3 text-sm font-bold text-stitch-primary hover:underline"
                             >
                                 View Library
@@ -462,7 +459,7 @@ export function FlashcardReviewPage({ onNavigate }: FlashcardReviewPageProps) {
                     <Button
                         type="button"
                         className="mt-6 rounded-xl bg-stitch-secondary px-8 text-white hover:bg-stitch-on-secondary-container"
-                        onClick={() => onNavigate('dashboard')}
+                        onClick={() => navigate('/')}
                     >
                         回首页
                     </Button>

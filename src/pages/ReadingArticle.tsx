@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
@@ -81,11 +82,9 @@ type SelBubble =
 export function ReadingArticleView({
     articleId,
     onBack,
-    onNavigateToSettings,
 }: {
     articleId: string;
     onBack: () => void;
-    onNavigateToSettings?: () => void;
 }) {
     const article = useReadingLibraryStore((s) => s.getById(articleId));
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
@@ -522,7 +521,7 @@ export function ReadingArticleView({
                                 >
                                     原文有付费墙限制，已为您提取核心摘要。想看全文请点此去官网。
                                 </a>
-                            ) : null}
+                            )
                         </div>
                     ) : displayBody.trim() ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READING_MARKDOWN_COMPONENTS}>
@@ -545,11 +544,11 @@ export function ReadingArticleView({
                 TAVILY_API_KEY），不在浏览器暴露。朗读使用浏览器语音合成，文本在本地处理。
             </p>
 
-            {!readingKey.trim() && onNavigateToSettings ? (
-                <Button type="button" variant="outline" className="w-fit" onClick={onNavigateToSettings}>
+            {!readingKey.trim() ? (
+                <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
                     去设置填写阅读 Key
                 </Button>
-            ) : null}
+            )
         </div>
     );
 }

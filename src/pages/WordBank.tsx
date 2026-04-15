@@ -1,9 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Book, ChevronLeft, ChevronRight, Layers, Pencil, Search, Trash2, Volume2, Wand2 } from 'lucide-react';
-import type { Page } from '@/App';
 import { WordDetailModal } from '@/components/word-detail-modal';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,8 @@ import type { WordBankSortMode } from '@/store/wordBankStore';
 /** 每页最多显示的词条数，满页后进入下一页 */
 const WORD_BANK_PAGE_SIZE = 12;
 
-export function WordBankPage({ onNavigate }: { onNavigate?: (page: Page) => void } = {}) {
+export function WordBankPage() {
+    const navigate = useNavigate();
     const { words, clearAllWords, removeWord, dedupeWords, sortWords, removeInvalidWords } = useWordBankStore();
     const { toast } = useToast();
     const [selectedWord, setSelectedWord] = React.useState<WordBankItem | null>(null);
@@ -105,12 +106,12 @@ export function WordBankPage({ onNavigate }: { onNavigate?: (page: Page) => void
                     这里收藏了您在学习过程中遇到的所有生词和例句
                 </p>
 
-                {onNavigate ? (
+                {(
                     <div className="mb-5 sm:mb-6">
                         <Button
                             type="button"
                             className="w-full gap-2 bg-teal-600 hover:bg-teal-700 sm:w-auto"
-                            onClick={() => onNavigate('flashcard-review')}
+                            onClick={() => navigate('/flashcard')}
                         >
                             <Layers className="h-4 w-4" />
                             闪卡复习（今日到期词）

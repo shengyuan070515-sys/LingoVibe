@@ -1,17 +1,14 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { CheckCircle2, Circle, ChevronRight, Layers, Bot, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Page } from '@/App';
 import { useWordBankStore } from '@/store/wordBankStore';
 import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 import { selectDueWords } from '@/lib/srs-utils';
 
-interface DashboardDailyLoopProps {
-    onNavigate: (page: Page) => void;
-}
-
 /** 纪要 C1/G1/G2：今日闭环三项 + 与活跃度并行展示 */
-export function DashboardDailyLoop({ onNavigate }: DashboardDailyLoopProps) {
+export function DashboardDailyLoop() {
+    const navigate = useNavigate();
     const words = useWordBankStore((s) => s.words);
     const reviewQueueDone = useDailyLoopStore((s) => s.reviewQueueDone);
     const chatRoundDone = useDailyLoopStore((s) => s.chatRoundDone);
@@ -77,7 +74,7 @@ export function DashboardDailyLoop({ onNavigate }: DashboardDailyLoopProps) {
                     <button
                         key={r.key}
                         type="button"
-                        onClick={() => onNavigate(r.page)}
+                        onClick={() => { const paths: Record<string, string> = {"dashboard": "/", "daily-reading": "/reading", "wordbank": "/wordbank", "visual-dictionary": "/visual-dictionary", "ai-chat": "/chat", "flashcard-review": "/flashcard", "settings": "/settings"}; navigate(paths[r.page] ?? '/'); }}
                         className={cn(
                             'flex w-full items-center gap-3 rounded-3xl bg-white/50 p-4 text-left shadow-[0_6px_28px_-10px_rgba(15,23,42,0.1)] ring-1 ring-white/85 backdrop-blur-md transition',
                             'hover:bg-white/65 hover:shadow-md',
