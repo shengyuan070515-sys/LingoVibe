@@ -1,19 +1,18 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { BookOpen, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Page } from '@/App';
 import { useReadingLibraryStore } from '@/store/readingLibraryStore';
 import { Button } from '@/components/ui/button';
 
 export function DashboardVibeSpotlight({
     displayName,
-    onNavigate,
     className,
 }: {
     displayName: string;
-    onNavigate?: (page: Page) => void;
     className?: string;
 }) {
+    const navigate = useNavigate();
     const articles = useReadingLibraryStore((s) => s.articles);
     const featured = React.useMemo(() => {
         if (!articles?.length) return null;
@@ -34,12 +33,12 @@ export function DashboardVibeSpotlight({
                 <p className="text-slate-600">
                     Hey {displayName}，书库还是空的。去「每日阅读」搜索或导入一篇文章，这里会轮播展示节选。
                 </p>
-                {onNavigate ? (
-                    <Button type="button" className="mt-4 rounded-full bg-teal-600 hover:bg-teal-700" onClick={() => onNavigate('daily-reading')}>
+                {(
+                    <Button type="button" className="mt-4 rounded-full bg-teal-600 hover:bg-teal-700" onClick={() => navigate('/reading')}>
                         打开每日阅读
                         <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
-                ) : null}
+                )}
             </section>
         );
     }
@@ -63,18 +62,18 @@ export function DashboardVibeSpotlight({
                     </p>
                     {preview ? (
                         <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-500">{preview}…</p>
-                    ) : null}
-                    {onNavigate ? (
+                    )}
+                    {(
                         <Button
                             type="button"
                             variant="secondary"
                             className="mt-6 rounded-full"
-                            onClick={() => onNavigate('daily-reading')}
+                            onClick={() => navigate('/reading')}
                         >
                             去每日阅读打开
                             <ChevronRight className="ml-1 h-4 w-4" />
                         </Button>
-                    ) : null}
+                    )}
                 </div>
             </div>
         </section>

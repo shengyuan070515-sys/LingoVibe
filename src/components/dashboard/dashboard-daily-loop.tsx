@@ -27,7 +27,7 @@ export function DashboardDailyLoop() {
         sub: string;
         done: boolean;
         icon: typeof Layers;
-        page: Page;
+        page: string;
     }[] = [
         {
             key: 'rev',
@@ -74,7 +74,7 @@ export function DashboardDailyLoop() {
                     <button
                         key={r.key}
                         type="button"
-                        onClick={() => { const paths: Record<string, string> = {"dashboard": "/", "daily-reading": "/reading", "wordbank": "/wordbank", "visual-dictionary": "/visual-dictionary", "ai-chat": "/chat", "flashcard-review": "/flashcard", "settings": "/settings"}; navigate(paths[r.page] ?? '/'); }}
+                        onClick={() => { const paths: Record<string, string> = {'dashboard': '/', 'daily-reading': '/reading', 'wordbank': '/wordbank', 'flashcard-review': '/flashcard', 'ai-chat': '/chat'}; navigate(paths[r.page] ?? '/'); }}
                         className={cn(
                             'flex w-full items-center gap-3 rounded-3xl bg-white/50 p-4 text-left shadow-[0_6px_28px_-10px_rgba(15,23,42,0.1)] ring-1 ring-white/85 backdrop-blur-md transition',
                             'hover:bg-white/65 hover:shadow-md',

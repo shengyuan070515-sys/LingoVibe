@@ -278,7 +278,7 @@ export function DailyReadingPage() {
                 key={openId}
                 articleId={openId}
                 onBack={() => setOpenId(null)}
-            />
+                            />
         );
     }
 
@@ -539,11 +539,9 @@ export function DailyReadingPage() {
                 VITE_READING_API_BASE。翻译与难度估计使用「设置」中的每日阅读 DeepSeek Key。
             </p>
 
-            {(
-                <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
+            <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
                     打开设置
                 </Button>
-            ) : null}
         </div>
     );
 }

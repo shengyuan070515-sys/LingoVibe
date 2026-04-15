@@ -1,9 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { Bot, Image as ImageIcon, Book, BookOpen, ChevronRight, Layers } from 'lucide-react';
-import type { Page } from '@/App';
 import { cn } from '@/lib/utils';
 
 const actions: {
-    id: Page;
+    id: string;
     title: string;
     desc: string;
     icon: typeof Bot;
@@ -46,7 +46,8 @@ const actions: {
     },
 ];
 
-export function DashboardQuickActions({ onNavigate }: { onNavigate: (p: Page) => void }) {
+export function DashboardQuickActions() {
+    const navigate = useNavigate();
     return (
         <section className="space-y-5">
             <div>
@@ -59,7 +60,7 @@ export function DashboardQuickActions({ onNavigate }: { onNavigate: (p: Page) =>
                     <button
                         key={a.id}
                         type="button"
-                        onClick={() => onNavigate(a.id)}
+                        onClick={() => { const paths: Record<string, string> = {'visual-dictionary': '/visual-dictionary', 'ai-chat': '/chat', 'wordbank': '/wordbank', 'daily-reading': '/reading', 'courses': '/courses'}; navigate(paths[a.id] ?? '/'); }}
                         className={cn(
                             'group flex min-h-[5.5rem] flex-col justify-between rounded-3xl bg-gradient-to-br p-4 text-left shadow-[0_6px_28px_-8px_rgba(15,23,42,0.12)] ring-1 ring-white/85 backdrop-blur-md transition duration-200',
                             'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-teal-900/5 sm:min-h-[6.25rem] sm:p-5',
@@ -82,7 +83,7 @@ export function DashboardQuickActions({ onNavigate }: { onNavigate: (p: Page) =>
             </div>
             <button
                 type="button"
-                onClick={() => onNavigate('courses')}
+                onClick={() => navigate('/courses')}
                 className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white/40 py-3.5 text-sm text-slate-600 shadow-sm ring-1 ring-white/80 backdrop-blur-md transition hover:bg-white/60 hover:text-slate-700"
             >
                 <BookOpen className="h-4 w-4 opacity-70" />

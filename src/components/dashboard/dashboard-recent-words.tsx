@@ -1,10 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { Sparkles } from 'lucide-react';
 import { useWordBankStore } from '@/store/wordBankStore';
-import type { Page } from '@/App';
 import { Button } from '@/components/ui/button';
 
-export function DashboardRecentWords({ onNavigate }: { onNavigate: (p: Page) => void }) {
+export function DashboardRecentWords() {
+    const navigate = useNavigate();
     const words = useWordBankStore((s) => s.words);
     const recent = React.useMemo(() => {
         return [...words]
@@ -26,7 +27,7 @@ export function DashboardRecentWords({ onNavigate }: { onNavigate: (p: Page) => 
                     variant="secondary"
                     size="sm"
                     className="mt-5 rounded-full border-0 bg-white/70 text-slate-700 shadow-sm ring-1 ring-white/90 backdrop-blur-sm hover:bg-white/90"
-                    onClick={() => onNavigate('visual-dictionary')}
+                    onClick={() => navigate('/visual-dictionary')}
                 >
                     去视觉查词
                 </Button>
@@ -43,7 +44,7 @@ export function DashboardRecentWords({ onNavigate }: { onNavigate: (p: Page) => 
                 </div>
                 <button
                     type="button"
-                    onClick={() => onNavigate('wordbank')}
+                    onClick={() => navigate('/wordbank')}
                     className="text-sm font-medium text-slate-600 underline-offset-4 transition hover:text-teal-700 hover:underline"
                 >
                     生词本
