@@ -108,7 +108,6 @@ function App() {
                 >
                   <Settings className="h-5 w-5" strokeWidth={1.75} />
                 </Button>
-                <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-1 rounded-full sm:text-xs">VIP 会员</span>
                 <Separator orientation="vertical" className="mx-0.5 hidden h-6 sm:mx-2 sm:block" />
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
                   XM
