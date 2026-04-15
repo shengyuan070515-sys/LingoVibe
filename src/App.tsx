@@ -40,7 +40,7 @@ const pageTitles: Record<Page, string> = {
 
 function App() { 
   const [activePage, setActivePage] = React.useState<Page>('dashboard');
-
+  const [displayName] = useLocalStorage('lingovibe_display_name', '');
   React.useEffect(() => {
     clearLegacyPodcastStorage();
     const run = () => seedDemoDataIfEmpty();
