@@ -278,6 +278,7 @@ export function DailyReadingPage() {
                 key={openId}
                 articleId={openId}
                 onBack={() => setOpenId(null)}
+                
             />
         );
     }
