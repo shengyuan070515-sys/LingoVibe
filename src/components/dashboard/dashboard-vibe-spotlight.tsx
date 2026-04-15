@@ -60,7 +60,7 @@ export function DashboardVibeSpotlight({
                     <p className="mt-4 text-[15px] leading-[1.75] text-slate-600 sm:text-base">
                         Hey {displayName}，今天翻翻这篇：「{featured.sourceTitle}」
                     </p>
-                    {preview ? (
+                    {preview && (
                         <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-500">{preview}…</p>
                     )}
                     {(
