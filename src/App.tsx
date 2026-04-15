@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { ToastProvider } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar"
-
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { DashboardPage } from "@/pages/Dashboard"
 import { AiChatPage } from "@/pages/AiChat"
 import { CoursesPage } from "@/pages/Courses"
