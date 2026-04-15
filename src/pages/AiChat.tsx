@@ -30,7 +30,6 @@ import {
     emmaSystemPrompt,
     createEmptySession,
     migrateLegacyChatSessionsIfNeeded,
-    parseEmmaResponse,
     fetchProactiveOpening,
     fetchEmmaChatCompletion,
     fetchEnglishToChineseTranslation,
