@@ -25,6 +25,8 @@ export interface WordBankItem {
     nextReviewDate: number; 
     interval: number; 
     level: number; 
+    /** 完整中文释义列表（来自 Free Dictionary + 翻译）；卡片展示只用 translation，此字段供未来多义查看等扩展 */
+    allDefinitions?: string[];
 }
 
 interface WordBankState {
@@ -76,6 +78,9 @@ function enrichWinner(winner: WordBankItem, losers: WordBankItem[]): WordBankIte
         if (imgs.length > 0) w.images = [...new Set(imgs)];
         if ((!w.synonyms || w.synonyms.length === 0) && o.synonyms && o.synonyms.length > 0) {
             w.synonyms = o.synonyms;
+        }
+        if ((!w.allDefinitions || w.allDefinitions.length === 0) && o.allDefinitions && o.allDefinitions.length > 0) {
+            w.allDefinitions = o.allDefinitions;
         }
     }
     return w;
@@ -260,10 +265,9 @@ export const useWordBankStore = create<WordBankState>()(
                         outcome === 'know'
                             ? patchWordAfterKnow(w)
                             : outcome === 'forgot'
-                              ? patchWordAfterForgot()
+                              ? patchWordAfterForgot(w)
                               : patchWordAfterLearning(w);
-                    const levelAfter =
-                        outcome === 'know' ? w.level + 1 : outcome === 'forgot' ? 0 : w.level;
+                    const levelAfter = patch.level;
                     useReviewLogStore.getState().push({
                         wordId,
                         word: w.word,
