@@ -1,11 +1,17 @@
-/** 服务端 GET /api/reading-featured-daily 返回体（与 api 一致） */
+/** 服务端 GET /api/reading-featured-daily 返回体（v2：AI 生成文章） */
+
+import type { ReadingQuizItem, ReadingVocabItem } from '@/store/readingLibraryStore';
 
 export type FeaturedBundleItem = {
-    categoryId: string;
-    categoryLabelZh: string;
-    url: string;
+    id: string;
     title: string;
-    snippet: string;
+    body: string;
+    difficulty: 1 | 2 | 3 | 4 | 5;
+    summary: string;
+    keyVocabulary: ReadingVocabItem[];
+    quiz: ReadingQuizItem[];
+    topic: string;
+    source: 'hot' | 'pool';
 };
 
 export type FeaturedBundle = {

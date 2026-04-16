@@ -3,7 +3,22 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { canonicalizeUrl } from '@/lib/reading-url';
 
 export type ReadingDifficulty = 1 | 2 | 3 | 4 | 5;
-export type ReadingSourceType = 'web_curated' | 'user_import';
+export type ReadingSourceType = 'web_curated' | 'user_import' | 'ai_generated';
+
+export interface ReadingVocabItem {
+    word: string;
+    phonetic: string;
+    pos: string;
+    definitionZh: string;
+    exampleSentence: string;
+}
+
+export interface ReadingQuizItem {
+    question: string;
+    options: string[];
+    answer: string;
+    explanationZh: string;
+}
 
 export interface ReadingArticle {
     id: string;
@@ -16,6 +31,14 @@ export interface ReadingArticle {
     /** 正文抽取失败（如付费墙）：仅展示摘要 + 官网按钮 */
     summaryOnly?: boolean;
     summaryText?: string;
+    /** AI 生成文章专属：一句话中文摘要 */
+    summary?: string;
+    /** AI 生成文章专属：重点词汇（5-8 个） */
+    keyVocabulary?: ReadingVocabItem[];
+    /** AI 生成文章专属：随文测验（2-3 题） */
+    quiz?: ReadingQuizItem[];
+    /** AI 生成文章专属：话题标签 */
+    topic?: string;
 }
 
 export type AddOrGetByUrlResult =
@@ -36,6 +59,15 @@ interface ReadingLibraryState {
         title: string;
         content: string;
         difficulty?: ReadingDifficulty;
+    }) => string;
+    addAiArticle: (input: {
+        title: string;
+        content: string;
+        difficulty: ReadingDifficulty;
+        summary?: string;
+        keyVocabulary?: ReadingVocabItem[];
+        quiz?: ReadingQuizItem[];
+        topic?: string;
     }) => string;
     updateDifficulty: (id: string, difficulty: ReadingDifficulty) => void;
     remove: (id: string) => void;
@@ -91,6 +123,24 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     fetchedAt: Date.now(),
                     difficulty: input.difficulty ?? 3,
                     sourceType: 'user_import',
+                };
+                set((state) => ({ articles: [...state.articles, article] }));
+                return id;
+            },
+            addAiArticle: (input) => {
+                const id = newReadingArticleId();
+                const article: ReadingArticle = {
+                    id,
+                    canonicalUrl: null,
+                    sourceTitle: input.title,
+                    content: input.content,
+                    fetchedAt: Date.now(),
+                    difficulty: input.difficulty,
+                    sourceType: 'ai_generated',
+                    summary: input.summary,
+                    keyVocabulary: input.keyVocabulary,
+                    quiz: input.quiz,
+                    topic: input.topic,
                 };
                 set((state) => ({ articles: [...state.articles, article] }));
                 return id;

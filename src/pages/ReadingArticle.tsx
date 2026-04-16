@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, BookMarked, Languages, Loader2, Volume2, ClipboardList, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookMarked, Languages, Loader2, Volume2, Sparkles } from 'lucide-react';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes, fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { ReadingWordCardModal } from '@/components/reading/reading-word-card-modal';
+import { ReadingVocabCards } from '@/components/reading/reading-vocab-cards';
+import { ReadingQuiz } from '@/components/reading/reading-quiz';
 import { useReadingLibraryStore, type ReadingArticle as RA } from '@/store/readingLibraryStore';
 import { useWordBankStore } from '@/store/wordBankStore';
 import { recordReadingSession } from '@/store/learningAnalyticsStore';
@@ -394,6 +396,16 @@ export function ReadingArticleView({
 
             <h1 className="text-xl font-semibold tracking-tight text-slate-800">{article.sourceTitle}</h1>
 
+            {article.summary ? (
+                <div className="rounded-xl border border-teal-100/80 bg-teal-50/50 p-3 text-sm leading-relaxed text-teal-900">
+                    <span className="mr-1 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
+                        <Sparkles className="h-3 w-3" />
+                        一句话摘要
+                    </span>
+                    {article.summary}
+                </div>
+            ) : null}
+
             {article.canonicalUrl ? (
                 <a
                     href={article.canonicalUrl}
@@ -514,11 +526,13 @@ export function ReadingArticleView({
                 </div>
             </div>
 
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-center text-sm text-slate-500">
-                <ClipboardList className="mx-auto mb-2 h-8 w-8 opacity-40" />
-                <p className="font-medium text-slate-600">随文测验</p>
-                <p className="mt-1 text-xs">即将推出 · 规格已预留（≥5 题、80% 正确率）</p>
-            </div>
+            {article.keyVocabulary && article.keyVocabulary.length > 0 ? (
+                <ReadingVocabCards items={article.keyVocabulary} />
+            ) : null}
+
+            {article.quiz && article.quiz.length > 0 ? (
+                <ReadingQuiz items={article.quiz} />
+            ) : null}
 
             <p className="text-[11px] leading-relaxed text-slate-500">
                 翻译与语法分析由服务端 AI 代理提供，无需额外配置。朗读使用浏览器语音合成，文本在本地处理。

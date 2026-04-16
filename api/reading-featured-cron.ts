@@ -26,8 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(200).json({ ok: true, dateKey, count: bundle.items.length });
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (msg === 'MISSING_TAVILY') {
-            res.status(503).json({ error: 'MISSING_TAVILY' });
+        if (msg === 'MISSING_DEEPSEEK') {
+            res.status(503).json({ error: 'MISSING_DEEPSEEK' });
+            return;
+        }
+        if (msg === 'GENERATION_FAILED') {
+            res.status(502).json({ error: 'GENERATION_FAILED' });
             return;
         }
         res.status(500).json({ error: 'Cron failed', detail: msg.slice(0, 400) });

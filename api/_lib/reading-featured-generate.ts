@@ -1,33 +1,52 @@
-import { canonicalizeUrl } from '../../src/lib/reading-url.js';
-import { FEATURED_CATEGORIES, urlMatchesCategoryDomains, type FeaturedCategoryDef } from './reading-featured-config.js';
-import { searchTavily, type TavilySearchHit } from './tavily-search.js';
+/**
+ * 每日精选：4 篇 Tavily 热点话题 + 4 篇固定主题池 → 逐篇调 DeepSeek 生成完整学习文章。
+ * 与 Cron 共用。
+ */
 
-export type FeaturedBundleItem = {
-    categoryId: string;
-    categoryLabelZh: string;
-    url: string;
-    title: string;
-    snippet: string;
+import { generateLearningArticle, type AiDifficulty, type AiGeneratedArticle } from './reading-article-generate.js';
+import { searchTavily } from './tavily-search.js';
+
+export type FeaturedArticleItem = AiGeneratedArticle & {
+    id: string;
+    /** 话题来源标识 */
+    topic: string;
+    /** 'hot' = Tavily 热点, 'pool' = 固定主题池 */
+    source: 'hot' | 'pool';
 };
 
 export type FeaturedBundle = {
     dateKey: string;
     generatedAt: number;
     version: number;
-    items: FeaturedBundleItem[];
+    items: FeaturedArticleItem[];
 };
 
-const QUERY_TOPICS = [
-    'world news',
-    'analysis',
-    'science',
-    'climate',
-    'business',
-    'technology',
-    'culture',
-    'opinion',
-    'economy',
-    'health',
+/** 固定主题池，覆盖常见英语学习兴趣点 */
+const FIXED_TOPIC_POOL: { topic: string; difficulty: AiDifficulty }[] = [
+    { topic: 'How sleep affects memory and learning', difficulty: 2 },
+    { topic: 'The psychology of habit formation', difficulty: 3 },
+    { topic: 'A short history of coffee and global trade', difficulty: 3 },
+    { topic: 'Understanding emotional intelligence at work', difficulty: 4 },
+    { topic: 'The science of why music moves us', difficulty: 3 },
+    { topic: 'Cities designed for walking, not driving', difficulty: 4 },
+    { topic: 'How languages shape the way we think', difficulty: 4 },
+    { topic: 'Simple ways to build a reading habit', difficulty: 2 },
+    { topic: 'The hidden costs of fast fashion', difficulty: 3 },
+    { topic: 'Why deep work matters in a distracted age', difficulty: 4 },
+    { topic: 'The art of asking better questions', difficulty: 3 },
+    { topic: 'What makes a story memorable', difficulty: 3 },
+] as const;
+
+/** Tavily 热点话题的搜索查询，每日轮换 */
+const HOT_TOPIC_QUERIES = [
+    'technology news this week',
+    'climate and environment headlines',
+    'business and economy trends',
+    'science discoveries recent',
+    'global culture news',
+    'health and wellness insights',
+    'space exploration latest',
+    'education and learning trends',
 ] as const;
 
 function hashString(s: string): number {
@@ -38,7 +57,7 @@ function hashString(s: string): number {
     return Math.abs(h);
 }
 
-function shuffleCopy<T>(arr: readonly T[], seed: string): T[] {
+function seededShuffle<T>(arr: readonly T[], seed: string): T[] {
     const out = [...arr];
     let h = hashString(seed);
     for (let i = out.length - 1; i > 0; i--) {
@@ -49,78 +68,81 @@ function shuffleCopy<T>(arr: readonly T[], seed: string): T[] {
     return out;
 }
 
-function pickTopicIndex(dateKey: string, categoryId: string, domain: string, salt: number): number {
-    return hashString(`${dateKey}|${categoryId}|${domain}|${salt}`) % QUERY_TOPICS.length;
+function articleId(dateKey: string, index: number): string {
+    return `featured-${dateKey}-${index}`;
 }
 
-function hitToItem(
-    hit: TavilySearchHit,
-    cat: FeaturedCategoryDef,
-    globalSeen: Set<string>
-): FeaturedBundleItem | null {
-    const canonical = canonicalizeUrl(hit.url);
-    if (canonical === null) return null;
-    if (!urlMatchesCategoryDomains(hit.url, cat.domains)) return null;
-    if (globalSeen.has(canonical)) return null;
-    globalSeen.add(canonical);
-    return {
-        categoryId: cat.id,
-        categoryLabelZh: cat.labelZh,
-        url: hit.url,
-        title: hit.title,
-        snippet: hit.snippet,
-    };
+/** 从 Tavily 搜索结果提炼一个可用于 AI 生成的短话题描述 */
+async function deriveHotTopic(query: string, tavilyKey: string): Promise<string | null> {
+    try {
+        const hits = await searchTavily(query, tavilyKey, 3);
+        if (hits.length === 0) return null;
+        const top = hits[0];
+        const title = (top.title || '').trim();
+        const snippet = (top.snippet || '').trim().slice(0, 200);
+        if (!title) return null;
+        if (snippet) return `${title}. Context: ${snippet}`;
+        return title;
+    } catch {
+        return null;
+    }
 }
 
-async function fillCategory(
-    cat: FeaturedCategoryDef,
+/**
+ * 生成当日精选 bundle。
+ * 即便某些文章生成失败（网络/配额问题），也会返回已成功的部分。
+ */
+export async function generateFeaturedBundle(
     dateKey: string,
-    apiKey: string,
-    globalSeen: Set<string>,
-    targetCount: number
-): Promise<FeaturedBundleItem[]> {
-    const picked: FeaturedBundleItem[] = [];
-    const domains = shuffleCopy(cat.domains, `${dateKey}:${cat.id}`);
+    deepseekKey: string,
+    tavilyKey: string | undefined
+): Promise<FeaturedBundle> {
+    const items: FeaturedArticleItem[] = [];
 
-    const maxPasses = 12;
-    for (let pass = 0; pass < maxPasses && picked.length < targetCount; pass++) {
-        for (const domain of domains) {
-            if (picked.length >= targetCount) break;
-            const topic = QUERY_TOPICS[pickTopicIndex(dateKey, cat.id, domain, pass)];
-            const q = `site:${domain} ${topic}`;
-            let hits: TavilySearchHit[];
+    const hotQueries = seededShuffle(HOT_TOPIC_QUERIES, `${dateKey}:hot`).slice(0, 4);
+    const poolTopics = seededShuffle(FIXED_TOPIC_POOL, `${dateKey}:pool`).slice(0, 4);
+
+    let idx = 0;
+
+    if (tavilyKey) {
+        for (const q of hotQueries) {
+            const topic = await deriveHotTopic(q, tavilyKey);
+            if (!topic) continue;
+            const difficulty: AiDifficulty = ((idx % 3) + 2) as AiDifficulty;
             try {
-                hits = await searchTavily(q, apiKey, 10);
+                const article = await generateLearningArticle(topic, difficulty, deepseekKey);
+                items.push({
+                    ...article,
+                    id: articleId(dateKey, idx),
+                    topic,
+                    source: 'hot',
+                });
+                idx++;
             } catch {
                 continue;
-            }
-            for (const h of hits) {
-                const item = hitToItem(h, cat, globalSeen);
-                if (item) {
-                    picked.push(item);
-                    if (picked.length >= targetCount) break;
-                }
             }
         }
     }
 
-    return picked;
-}
-
-/** 每大类 2 篇，共 8 篇；不足 8 则返回已收集部分 */
-export async function generateFeaturedBundle(dateKey: string, apiKey: string): Promise<FeaturedBundle> {
-    const globalSeen = new Set<string>();
-    const items: FeaturedBundleItem[] = [];
-
-    for (const cat of FEATURED_CATEGORIES) {
-        const part = await fillCategory(cat, dateKey, apiKey, globalSeen, 2);
-        items.push(...part);
+    for (const { topic, difficulty } of poolTopics) {
+        try {
+            const article = await generateLearningArticle(topic, difficulty, deepseekKey);
+            items.push({
+                ...article,
+                id: articleId(dateKey, idx),
+                topic,
+                source: 'pool',
+            });
+            idx++;
+        } catch {
+            continue;
+        }
     }
 
     return {
         dateKey,
         generatedAt: Date.now(),
-        version: 1,
+        version: 2,
         items,
     };
 }

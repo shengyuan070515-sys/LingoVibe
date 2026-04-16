@@ -142,8 +142,8 @@ export function DashboardPage() {
     const readingCard = featured
         ? {
               title: featured.title,
-              snippet: featured.snippet?.trim() || '今日精选外文摘要',
-              tag: featured.categoryLabelZh || '每日精选',
+              snippet: featured.summary?.trim() || '今日 AI 生成的学习文章',
+              tag: featured.source === 'hot' ? '热点话题' : '每日精选',
           }
         : librarySpotlight
           ? {

@@ -3,7 +3,8 @@ import { getDateKeyShanghai } from '../../src/lib/date-key-shanghai.js';
 import { generateFeaturedBundle, type FeaturedBundle } from './reading-featured-generate.js';
 
 function kvKey(dateKey: string): string {
-    return `reading:featured:${dateKey}`;
+    /** v2 = AI 生成文章（新 schema），与旧链接型缓存隔离 */
+    return `reading:featured:v2:${dateKey}`;
 }
 
 function skipKv(): boolean {
@@ -31,23 +32,28 @@ export async function saveFeaturedBundle(bundle: FeaturedBundle): Promise<void> 
     }
 }
 
-/** 读缓存；若无则 Tavily 生成并写入（与 Cron 共用逻辑） */
+/** 读缓存；若无则调用 DeepSeek 生成并写入（与 Cron 共用逻辑） */
 export async function ensureFeaturedForDate(dateKey: string): Promise<FeaturedBundle> {
     const cached = await loadFeaturedBundle(dateKey);
     if (cached && Array.isArray(cached.items) && cached.items.length > 0) {
         return cached;
     }
 
-    const apiKey = process.env.TAVILY_API_KEY?.trim();
-    if (!apiKey) {
-        throw new Error('MISSING_TAVILY');
+    const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
+    if (!deepseekKey) {
+        throw new Error('MISSING_DEEPSEEK');
     }
 
-    const bundle = await generateFeaturedBundle(dateKey, apiKey);
+    const tavilyKey = process.env.TAVILY_API_KEY?.trim() || undefined;
+
+    const bundle = await generateFeaturedBundle(dateKey, deepseekKey, tavilyKey);
+    if (bundle.items.length === 0) {
+        throw new Error('GENERATION_FAILED');
+    }
     try {
         await saveFeaturedBundle(bundle);
     } catch {
-        /* 写入 KV 失败仍返回当日生成结果，避免前端 500；长期应修复 KV 或使用 READING_FEATURED_SKIP_KV 本地调试 */
+        /* 写入 KV 失败仍返回当日生成结果 */
     }
     return bundle;
 }

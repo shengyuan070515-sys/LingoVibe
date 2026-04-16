@@ -39,10 +39,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(200).json(bundle);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (msg === 'MISSING_TAVILY') {
+        if (msg === 'MISSING_DEEPSEEK') {
             res.status(503).json({
-                error: 'Server missing TAVILY_API_KEY',
-                detail: '在 Vercel 或本地 .env 配置 TAVILY_API_KEY',
+                error: 'Server missing DEEPSEEK_API_KEY',
+                detail: '在 Vercel 或本地 .env 配置 DEEPSEEK_API_KEY',
+            });
+            return;
+        }
+        if (msg === 'GENERATION_FAILED') {
+            res.status(502).json({
+                error: 'AI 生成失败',
+                detail: '今日精选文章生成失败，请稍后再试',
             });
             return;
         }
@@ -56,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             res.status(503).json({
                 error: 'KV not configured',
                 detail:
-                    '请配置 KV_REST_API_URL、KV_REST_API_TOKEN（Vercel KV / Upstash）。本地可临时设置 READING_FEATURED_SKIP_KV=1 跳过缓存（仅调试，会每次打 Tavily）。',
+                    '请配置 KV_REST_API_URL、KV_REST_API_TOKEN（Vercel KV / Upstash）。本地可临时设置 READING_FEATURED_SKIP_KV=1 跳过缓存（仅调试）。',
             });
             return;
         }
