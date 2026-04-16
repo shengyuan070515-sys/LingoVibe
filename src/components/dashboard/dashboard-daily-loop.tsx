@@ -40,7 +40,7 @@ export function DashboardDailyLoop() {
         {
             key: 'chat',
             label: '完成 1 轮 AI 对话',
-            sub: '发出一条消息并收到 Emma 回复（需 API Key）',
+            sub: '发出一条消息并收到 Emma 回复',
             done: chatRoundDone,
             icon: Bot,
             page: 'ai-chat',

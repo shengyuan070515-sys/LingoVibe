@@ -307,8 +307,7 @@ export function CourseDetail({ onBack }: { onBack: () => void }) {
                                         />
                                     </div>
                                     <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500 sm:text-left">
-                                        对话由 DeepSeek 根据你在「设置」中填写的 API Key
-                                        生成；语音仅在浏览器内识别为文字，不上传录音文件。
+                                        对话由服务端 AI 代理生成，无需额外配置；语音仅在浏览器内识别为文字，不上传录音文件。
                                     </p>
                                 </div>
                             </motion.section>

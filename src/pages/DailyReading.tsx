@@ -1,7 +1,5 @@
-import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { BookOpen, Globe, Loader2, Search, Sparkles, Upload } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { platformSearch, platformExtractMarkdown, type SearchHit } from '@/lib/reading-platform-api';
 import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featured-api';
 import { estimateReadingDifficulty } from '@/lib/reading-ai';
@@ -49,14 +47,11 @@ function excerptFromArticle(a: { content: string; summaryText?: string; summaryO
 }
 
 export function DailyReadingPage() {
-    const navigate = useNavigate();
     const articles = useReadingLibraryStore((s) => s.articles);
     const addOrGetByUrl = useReadingLibraryStore((s) => s.addOrGetByUrl);
     const addUserImport = useReadingLibraryStore((s) => s.addUserImport);
     const remove = useReadingLibraryStore((s) => s.remove);
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
-
-    const [readingKey] = useLocalStorage('reading_api_key', '');
 
     const { toast } = useToast();
 
@@ -106,10 +101,6 @@ export function DailyReadingPage() {
 
     const openFeaturedItem = async (item: FeaturedBundleItem) => {
         if (openingFeaturedUrl) return;
-        if (!readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key（用于难度估计）', 'error');
-            return;
-        }
         setOpeningFeaturedUrl(item.url);
         try {
             let md = '';
@@ -122,7 +113,7 @@ export function DailyReadingPage() {
             const slice = md.trim() ? md.slice(0, 800) : item.snippet;
             let diff: ReadingDifficulty = 3;
             try {
-                diff = await estimateReadingDifficulty(readingKey.trim(), item.title, slice);
+                diff = await estimateReadingDifficulty('', item.title, slice);
             } catch {
                 diff = 3;
             }
@@ -201,10 +192,6 @@ export function DailyReadingPage() {
             toast('请先勾选文章', 'error');
             return;
         }
-        if (!readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key（用于难度估计）', 'error');
-            return;
-        }
         setImporting(true);
         try {
             for (const url of picked) {
@@ -223,7 +210,7 @@ export function DailyReadingPage() {
                 }
                 let diff: ReadingDifficulty = 3;
                 try {
-                    diff = await estimateReadingDifficulty(readingKey.trim(), title, md.slice(0, 800));
+                    diff = await estimateReadingDifficulty('', title, md.slice(0, 800));
                 } catch {
                     diff = 3;
                 }
@@ -535,13 +522,8 @@ export function DailyReadingPage() {
             ) : null}
 
             <p className="text-[11px] leading-relaxed text-slate-500">
-                联网搜索使用部署端的 Tavily（环境变量 TAVILY_API_KEY）；正文抽取仍经 Serverless。前端需配置
-                VITE_READING_API_BASE。翻译与难度估计使用「设置」中的每日阅读 DeepSeek Key。
+                联网搜索由服务端 Tavily 提供；正文抽取与难度估计均经 Serverless 代理，无需额外配置。
             </p>
-
-            <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
-                    打开设置
-                </Button>
         </div>
     );
 }

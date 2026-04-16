@@ -164,7 +164,7 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
             
         } catch (error) {
             console.error(error);
-            toast("Failed to search. Please check your API keys and network.", "error");
+            toast("查词失败，请检查网络连接后重试。", "error");
         } finally {
             setIsLoading(false);
         }

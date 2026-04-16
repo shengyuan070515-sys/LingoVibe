@@ -41,15 +41,12 @@ export function ReadingWordCardModal({
         setHeroUrls([]);
         setActiveImageIndex(0);
         const w = word.trim();
-        if (!w || !apiKey.trim()) {
-            setError(!apiKey.trim() ? '请先在设置中填写每日阅读 DeepSeek Key' : '');
-            return;
-        }
+        if (!w) return;
         let cancelled = false;
         setLoading(true);
         (async () => {
             try {
-                const card = await fetchReadingWordCard(apiKey.trim(), w, contextSnippet);
+                const card = await fetchReadingWordCard('', w, contextSnippet);
                 if (cancelled) return;
                 setData(card);
             } catch (e) {

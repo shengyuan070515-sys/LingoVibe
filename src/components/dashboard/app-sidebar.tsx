@@ -4,9 +4,7 @@ import {
     Home,
     BookOpen,
     GraduationCap,
-    LogOut,
     Trophy,
-    MessageSquare,
     BarChart3,
     Bot,
     Book,
@@ -37,7 +35,6 @@ const menuItems: { path: string; icon: React.ElementType; label: string }[] = [
     { path: '/visual-dictionary', icon: ImageIcon, label: '视觉查词' },
     { path: '/reading', icon: BookOpen, label: '每日阅读' },
     { path: '/achievements', icon: Trophy, label: '成就与奖励' },
-    { path: '/community', icon: MessageSquare, label: '社区交流' },
 ];
 
 export function AppSidebar() {
@@ -64,7 +61,7 @@ export function AppSidebar() {
                     </div>
                     <div>
                         <div className="font-headline text-xl font-extrabold tracking-tight text-blue-700 dark:text-blue-400">LingoVibe</div>
-                        <div className="text-xs font-medium text-stitch-on-surface-variant opacity-80">Premium Learner</div>
+                        <div className="text-xs font-medium text-stitch-on-surface-variant opacity-80">学英语，有感觉</div>
                     </div>
                 </div>
             </SidebarHeader>
@@ -102,12 +99,6 @@ export function AppSidebar() {
                         >
                             <HelpCircle className="h-4 w-4 shrink-0" />
                             <span>帮助与设置</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton className="font-medium text-red-500 hover:bg-red-50 hover:text-red-600">
-                            <LogOut className="h-4 w-4 shrink-0" />
-                            <span>退出登录</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

@@ -1,11 +1,9 @@
-import { useNavigate } from 'react-router-dom';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ArrowLeft, BookMarked, Languages, Loader2, Volume2, ClipboardList, Sparkles } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes, fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
@@ -86,11 +84,9 @@ export function ReadingArticleView({
     articleId: string;
     onBack: () => void;
 }) {
-    const navigate = useNavigate();
     const article = useReadingLibraryStore((s) => s.getById(articleId));
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
     const addWord = useWordBankStore((s) => s.addWord);
-    const [readingKey] = useLocalStorage('reading_api_key', '');
     const { toast } = useToast();
     const scrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -206,14 +202,10 @@ export function ReadingArticleView({
 
     const handleTranslateFull = async () => {
         if (!article) return;
-        if (!readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key', 'error');
-            return;
-        }
         setTransLoading(true);
         try {
             const chunk = displayBody.slice(0, 12000);
-            const zh = await fetchEnglishToChineseTranslation(readingKey.trim(), chunk);
+            const zh = await fetchEnglishToChineseTranslation('', chunk);
             setFullZh(zh || '（无译文）');
             setFullZhOpen(true);
         } catch (e) {
@@ -224,14 +216,10 @@ export function ReadingArticleView({
     };
 
     const handleSentenceTranslate = async (sel: string) => {
-        if (!readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key', 'error');
-            return;
-        }
         setBubble(null);
         setTransLoading(true);
         try {
-            const zh = await fetchEnglishToChineseTranslation(readingKey.trim(), sel.slice(0, 4000));
+            const zh = await fetchEnglishToChineseTranslation('', sel.slice(0, 4000));
             setSelZh(zh || '（无译文）');
             setSelZhOpen(true);
         } catch (e) {
@@ -242,15 +230,11 @@ export function ReadingArticleView({
     };
 
     const handleGrammar = async (sel: string) => {
-        if (!readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key', 'error');
-            return;
-        }
         setBubble(null);
         setGrammarLoading(true);
         setGrammar(null);
         try {
-            const g = await fetchReadingGrammarNotes(readingKey.trim(), sel);
+            const g = await fetchReadingGrammarNotes('', sel);
             setGrammar(g);
         } catch (e) {
             toast(e instanceof Error ? e.message : '分析失败', 'error');
@@ -268,16 +252,13 @@ export function ReadingArticleView({
 
     const addWordFromBubble = async (sel: string) => {
         const w = soleEnglishTokenFromSelection(sel);
-        if (!w || !readingKey.trim()) {
-            toast('请先在设置中填写每日阅读 DeepSeek Key', 'error');
-            return;
-        }
+        if (!w) return;
         setBubble(null);
         let card = wordCardCache.current.get(w.toLowerCase());
         if (!card) {
             try {
                 const snip = extractContextSnippet(displayBody.replace(/\s+/g, ' '), sel.slice(0, 120));
-                card = await fetchReadingWordCard(readingKey.trim(), w, snip);
+                card = await fetchReadingWordCard('', w, snip);
                 wordCardCache.current.set(w.toLowerCase(), card);
             } catch (e) {
                 toast(e instanceof Error ? e.message : '查词失败', 'error');
@@ -396,7 +377,7 @@ export function ReadingArticleView({
                 isOpen={!!wordCardWord}
                 onClose={() => setWordCardWord(null)}
                 word={wordCardWord ?? ''}
-                apiKey={readingKey}
+                apiKey=""
                 contextSnippet={wordCardWord ? extractContextSnippet(displayBody.replace(/\s+/g, ' '), wordCardWord) : ''}
                 articleContextLabel={articleContextLabel}
                 onAddToWordBank={handleWordCardAdd}
@@ -541,15 +522,8 @@ export function ReadingArticleView({
             </div>
 
             <p className="text-[11px] leading-relaxed text-slate-500">
-                翻译与语法使用你在「设置」中的每日阅读 DeepSeek Key。联网搜索由 Serverless 使用 Tavily（环境变量
-                TAVILY_API_KEY），不在浏览器暴露。朗读使用浏览器语音合成，文本在本地处理。
+                翻译与语法分析由服务端 AI 代理提供，无需额外配置。朗读使用浏览器语音合成，文本在本地处理。
             </p>
-
-            {!readingKey.trim() ? (
-                <Button type="button" variant="outline" className="w-fit" onClick={() => navigate('/settings')}>
-                    去设置填写阅读 Key
-                </Button>
-            ) : null}
         </div>
     );
 }
