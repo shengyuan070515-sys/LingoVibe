@@ -24,6 +24,36 @@ import { FlashcardReviewPage } from "@/pages/FlashcardReview"
 import { LearningStatsPage } from "@/pages/LearningStats"
 import { AchievementsPage } from "@/pages/Achievements"
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-8 text-center">
+          <h1 className="text-xl font-semibold text-slate-800">页面出了点问题</h1>
+          <p className="max-w-md text-sm text-slate-600">{this.state.error.message}</p>
+          <button
+            type="button"
+            onClick={() => { this.setState({ error: null }); window.location.href = '/'; }}
+            className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+          >
+            返回首页
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // 路由路径 → 页面标题
 const routeTitles: Record<string, string> = {
   '/': '首页',
@@ -126,11 +156,13 @@ function AppShell() {
 
 function App() {
   return (
-    <ToastProvider>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

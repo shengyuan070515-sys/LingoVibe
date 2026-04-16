@@ -261,11 +261,10 @@ async function callProxy(payload: DeepSeekPayload): Promise<string> {
     return content;
 }
 
-// ─── 公开 API（保持原签名兼容，_apiKey 参数保留但不再使用）────────────────
+// ─── 公开 API ────────────────────────────────────────────────────────────────
 
 /** 通用 Emma 多轮对话，与 AI 对话页、微课共用 */
 export async function fetchEmmaChatCompletion(
-    _apiKey: string,
     systemMessage: { role: 'system'; content: string },
     chatMessages: Array<{ role: 'user' | 'assistant'; content: string }>
 ): Promise<{ correction?: string; content: string; translation?: string }> {
@@ -277,7 +276,7 @@ export async function fetchEmmaChatCompletion(
 }
 
 /** 将一句英文译为口语化中文 */
-export async function fetchEnglishToChineseTranslation(_apiKey: string, englishText: string): Promise<string> {
+export async function fetchEnglishToChineseTranslation(englishText: string): Promise<string> {
     return callProxy({
         messages: [
             {
@@ -297,7 +296,6 @@ export async function fetchEnglishToChineseTranslation(_apiKey: string, englishT
 
 /** 主动开场白 */
 export async function fetchProactiveOpening(
-    _apiKey: string,
     mode: ChatMode,
     words: WordBankItem[]
 ): Promise<{ correction?: string; content: string; translation?: string }> {
@@ -323,7 +321,7 @@ Rules: max 28 words; natural and sincere; you may weave in their vocabulary word
 };
 
 /** 首页「Today's Mood」：基于最近收录词生成一句英文鼓励语 */
-export async function fetchTodaysMoodGreeting(_apiKey: string, word: string): Promise<string> {
+export async function fetchTodaysMoodGreeting(word: string): Promise<string> {
     const w = (word || '').trim() || 'your latest word';
     let line = await callProxy({
         messages: [

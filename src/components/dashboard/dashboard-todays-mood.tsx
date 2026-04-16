@@ -44,7 +44,7 @@ export function DashboardTodaysMood({ className }: { className?: string }) {
         let cancelled = false;
         setLoading(true);
         setErr(false);
-        fetchTodaysMoodGreeting('', latestWord.word)
+        fetchTodaysMoodGreeting(latestWord.word)
             .then((t) => {
                 if (cancelled) return;
                 const clean = t.trim() || fallbackLine(latestWord.word);

@@ -110,7 +110,6 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         try {
             const payload = next.map((m) => ({ role: m.role, content: m.content }));
             const { correction, content, translation } = await fetchEmmaChatCompletion(
-                '',
                 emmaCoffeeShopBaristaPrompt,
                 payload
             );
@@ -160,7 +159,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         );
 
         try {
-            const translation = await fetchEnglishToChineseTranslation('', englishForApi);
+            const translation = await fetchEnglishToChineseTranslation(englishForApi);
             onMessagesChange((prev) =>
                 prev.map((m, i) =>
                     i === index && m.role === 'assistant' && m.content === fpContent

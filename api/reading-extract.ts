@@ -37,6 +37,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        res.status(400).json({ error: 'Invalid URL' });
+        return;
+    }
+
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        res.status(400).json({ error: 'Only http/https URLs are allowed' });
+        return;
+    }
+
+    const host = parsed.hostname;
+    if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '::1' ||
+        host.endsWith('.local') ||
+        /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) ||
+        host === '169.254.169.254'
+    ) {
+        res.status(400).json({ error: 'Private/internal URLs are not allowed' });
+        return;
+    }
+
+    const MAX_BODY_BYTES = 512_000;
+
     const jinaUrl = `https://r.jina.ai/${encodeURIComponent(url)}`;
     const r = await fetch(jinaUrl, {
         headers: { Accept: 'text/plain,text/markdown,*/*' },
@@ -47,6 +75,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    const markdown = await r.text();
+    const markdown = (await r.text()).slice(0, MAX_BODY_BYTES);
     res.status(200).json({ markdown, title: null as string | null });
 }

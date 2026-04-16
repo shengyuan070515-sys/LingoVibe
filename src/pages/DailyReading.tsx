@@ -113,7 +113,7 @@ export function DailyReadingPage() {
             const slice = md.trim() ? md.slice(0, 800) : item.snippet;
             let diff: ReadingDifficulty = 3;
             try {
-                diff = await estimateReadingDifficulty('', item.title, slice);
+                diff = await estimateReadingDifficulty(item.title, slice);
             } catch {
                 diff = 3;
             }
@@ -210,7 +210,7 @@ export function DailyReadingPage() {
                 }
                 let diff: ReadingDifficulty = 3;
                 try {
-                    diff = await estimateReadingDifficulty('', title, md.slice(0, 800));
+                    diff = await estimateReadingDifficulty(title, md.slice(0, 800));
                 } catch {
                     diff = 3;
                 }

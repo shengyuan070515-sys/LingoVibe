@@ -110,6 +110,12 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
             version: 2,
             migrate: (persisted) => persisted,
             storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                articles: state.articles.slice(-50).map((a) => ({
+                    ...a,
+                    content: a.content.slice(0, 80_000),
+                })),
+            }),
         },
     ),
 );

@@ -7,7 +7,7 @@ async function callProxy(payload: object): Promise<string> {
 }
 
 /** 根据标题+摘要估计 1–5 难度；失败时返回 3 */
-export async function estimateReadingDifficulty(_apiKey: string, title: string, textPreview: string): Promise<ReadingDifficulty> {
+export async function estimateReadingDifficulty(title: string, textPreview: string): Promise<ReadingDifficulty> {
     const preview = textPreview.slice(0, 1200);
     const raw = await callProxy({
         messages: [
@@ -29,7 +29,7 @@ export async function estimateReadingDifficulty(_apiKey: string, title: string, 
 }
 
 /** 对选中英文做简短语法讲解（中文） */
-export async function fetchReadingGrammarNotes(_apiKey: string, selectedEnglish: string): Promise<string> {
+export async function fetchReadingGrammarNotes(selectedEnglish: string): Promise<string> {
     const t = selectedEnglish.trim();
     if (!t) throw new Error('请先选中一段英文');
     if (t.length > 2000) throw new Error('选区过长，请缩短后再分析');
@@ -74,7 +74,6 @@ function parseReadingWordCardJson(raw: string): ReadingWordCardData {
 
 /** 阅读划词：单次 LLM 调用返回结构化「视觉词典」字段 */
 export async function fetchReadingWordCard(
-    _apiKey: string,
     word: string,
     contextSnippet: string
 ): Promise<ReadingWordCardData> {

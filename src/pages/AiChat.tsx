@@ -201,7 +201,7 @@ export function AiChatPage() {
         (async () => {
             try {
                 const freshWords = useWordBankStore.getState().words;
-                const parsed = await fetchProactiveOpening('', chatMode, freshWords);
+                const parsed = await fetchProactiveOpening(chatMode, freshWords);
                 if (runId !== openingRunRef.current) return;
                 const title =
                     parsed.content.length > 32 ? `${parsed.content.slice(0, 30)}...` : parsed.content || 'New Chat';
@@ -365,7 +365,6 @@ export function AiChatPage() {
 
         try {
             const { correction, content, translation } = await fetchEmmaChatCompletion(
-                '',
                 emmaSystemPrompt,
                 messagesForApi.map((m) => ({ role: m.role, content: m.content }))
             );
@@ -422,7 +421,7 @@ export function AiChatPage() {
             updateSession(currentSessionId, { messages: translatingMessages });
 
             try {
-                const translation = await fetchEnglishToChineseTranslation('', targetMessage.content);
+                const translation = await fetchEnglishToChineseTranslation(targetMessage.content);
                 setPersisted((p) => {
                     const mode = p.chatMode;
                     const sid = p.currentSessionIdByMode[mode];

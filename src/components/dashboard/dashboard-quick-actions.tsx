@@ -26,7 +26,7 @@ const actions: {
     {
         id: 'daily-reading',
         title: '每日阅读',
-        desc: '精读与拓展，列表与导入即将上线',
+        desc: '精选外刊、联网搜索、导入文本',
         icon: BookOpen,
         gradient: 'from-amber-50/90 via-white/50 to-orange-50/75',
     },
@@ -60,7 +60,7 @@ export function DashboardQuickActions() {
                     <button
                         key={a.id}
                         type="button"
-                        onClick={() => { const paths: Record<string, string> = {'visual-dictionary': '/visual-dictionary', 'ai-chat': '/chat', 'wordbank': '/wordbank', 'daily-reading': '/reading', 'courses': '/courses'}; navigate(paths[a.id] ?? '/'); }}
+                        onClick={() => { const paths: Record<string, string> = {'visual-dictionary': '/visual-dictionary', 'ai-chat': '/chat', 'wordbank': '/wordbank', 'daily-reading': '/reading', 'courses': '/courses', 'flashcard-review': '/flashcard'}; navigate(paths[a.id] ?? '/'); }}
                         className={cn(
                             'group flex min-h-[5.5rem] flex-col justify-between rounded-3xl bg-gradient-to-br p-4 text-left shadow-[0_6px_28px_-8px_rgba(15,23,42,0.12)] ring-1 ring-white/85 backdrop-blur-md transition duration-200',
                             'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-teal-900/5 sm:min-h-[6.25rem] sm:p-5',

@@ -10,7 +10,6 @@ export interface ReadingWordCardModalProps {
     isOpen: boolean;
     onClose: () => void;
     word: string;
-    apiKey: string;
     contextSnippet: string;
     articleContextLabel: string;
     onAddToWordBank: (data: ReadingWordCardData) => void | Promise<void>;
@@ -20,7 +19,6 @@ export function ReadingWordCardModal({
     isOpen,
     onClose,
     word,
-    apiKey,
     contextSnippet,
     articleContextLabel,
     onAddToWordBank,
@@ -46,7 +44,7 @@ export function ReadingWordCardModal({
         setLoading(true);
         (async () => {
             try {
-                const card = await fetchReadingWordCard('', w, contextSnippet);
+                const card = await fetchReadingWordCard(w, contextSnippet);
                 if (cancelled) return;
                 setData(card);
             } catch (e) {
@@ -58,7 +56,7 @@ export function ReadingWordCardModal({
         return () => {
             cancelled = true;
         };
-    }, [isOpen, word, apiKey, contextSnippet]);
+    }, [isOpen, word, contextSnippet]);
 
     React.useEffect(() => {
         if (!isOpen || !data) return;
@@ -83,6 +81,15 @@ export function ReadingWordCardModal({
         return () => window.clearInterval(t);
     }, [isOpen, heroUrls.length]);
 
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
+
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === modalRef.current) onClose();
     };
@@ -100,6 +107,9 @@ export function ReadingWordCardModal({
     return (
         <div
             ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={word ? `查词：${word}` : '查词卡片'}
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
             onClick={handleBackdropClick}
         >
@@ -150,6 +160,7 @@ export function ReadingWordCardModal({
                 <button
                     type="button"
                     onClick={onClose}
+                    aria-label="关闭"
                     className="absolute right-4 top-4 text-gray-400 transition-colors hover:text-gray-600"
                 >
                     <X className="h-5 w-5" />

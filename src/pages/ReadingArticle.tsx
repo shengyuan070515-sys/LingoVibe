@@ -205,7 +205,7 @@ export function ReadingArticleView({
         setTransLoading(true);
         try {
             const chunk = displayBody.slice(0, 12000);
-            const zh = await fetchEnglishToChineseTranslation('', chunk);
+            const zh = await fetchEnglishToChineseTranslation(chunk);
             setFullZh(zh || '（无译文）');
             setFullZhOpen(true);
         } catch (e) {
@@ -219,7 +219,7 @@ export function ReadingArticleView({
         setBubble(null);
         setTransLoading(true);
         try {
-            const zh = await fetchEnglishToChineseTranslation('', sel.slice(0, 4000));
+            const zh = await fetchEnglishToChineseTranslation(sel.slice(0, 4000));
             setSelZh(zh || '（无译文）');
             setSelZhOpen(true);
         } catch (e) {
@@ -234,7 +234,7 @@ export function ReadingArticleView({
         setGrammarLoading(true);
         setGrammar(null);
         try {
-            const g = await fetchReadingGrammarNotes('', sel);
+            const g = await fetchReadingGrammarNotes(sel);
             setGrammar(g);
         } catch (e) {
             toast(e instanceof Error ? e.message : '分析失败', 'error');
@@ -258,7 +258,7 @@ export function ReadingArticleView({
         if (!card) {
             try {
                 const snip = extractContextSnippet(displayBody.replace(/\s+/g, ' '), sel.slice(0, 120));
-                card = await fetchReadingWordCard('', w, snip);
+                card = await fetchReadingWordCard(w, snip);
                 wordCardCache.current.set(w.toLowerCase(), card);
             } catch (e) {
                 toast(e instanceof Error ? e.message : '查词失败', 'error');
@@ -377,7 +377,6 @@ export function ReadingArticleView({
                 isOpen={!!wordCardWord}
                 onClose={() => setWordCardWord(null)}
                 word={wordCardWord ?? ''}
-                apiKey=""
                 contextSnippet={wordCardWord ? extractContextSnippet(displayBody.replace(/\s+/g, ' '), wordCardWord) : ''}
                 articleContextLabel={articleContextLabel}
                 onAddToWordBank={handleWordCardAdd}
