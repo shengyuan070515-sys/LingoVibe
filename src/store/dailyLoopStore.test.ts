@@ -9,7 +9,7 @@ function setNowTo(dateString: string) {
 function resetStore(dateString: string) {
     setNowTo(dateString);
     useDailyLoopStore.setState({
-        // @ts-expect-error — 直接赋值 dateKey 以进入受控的初始状态
+        // 直接赋值 dateKey 以进入受控的初始状态
         dateKey: new Date(dateString).toISOString().slice(0, 10),
         reviewQueueDone: false,
         chatRoundDone: false,
