@@ -9,7 +9,6 @@ import {
     PlayCircle,
     Trophy,
     Volume2,
-    Crown,
     Zap,
 } from 'lucide-react';
 import { DashboardTodaysMood } from '@/components/dashboard/dashboard-todays-mood';
@@ -186,9 +185,9 @@ export function DashboardPage() {
                     <p className="mt-1 font-medium text-stitch-on-surface-variant">保持节奏，今天也进步一点点。</p>
                 </div>
                 <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="flex items-center gap-2 rounded-full bg-stitch-tertiary-fixed px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-stitch-on-tertiary-fixed">
-                        <Crown className="h-3.5 w-3.5" strokeWidth={2} />
-                        VIP 会员
+                    <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-50 to-emerald-50 px-4 py-1.5 text-xs font-bold tracking-wider text-teal-700">
+                        <Flame className="h-3.5 w-3.5" strokeWidth={2} />
+                        连续 {streak} 天
                     </div>
                     <div
                         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-white bg-stitch-surface-container-high text-sm font-bold text-stitch-on-surface shadow-sm"

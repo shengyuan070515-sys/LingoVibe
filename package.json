@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint src/ api/ --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest run"
   },
@@ -26,12 +26,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.22.3",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.6.1",
-    "zustand": "^5.0.12",
-    "react-router-dom": "^6.22.3"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/js": "^8.57.1",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.66",

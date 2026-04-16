@@ -4,5 +4,5 @@
  */
 export function stripMarkdownInlineLinks(source: string): string {
     if (!source) return source;
-    return source.replace(/(?<!\!)\[([^\]]*)\]\([^)]*\)/g, '$1');
+    return source.replace(/(?<!!)\[([^\]]*)\]\([^)]*\)/g, '$1');
 }

@@ -347,6 +347,14 @@ export const useWordBankStore = create<WordBankState>()(
             name: 'lingovibe_global_wordbank',
             version: 1,
             storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                words: state.words
+                    .slice(-500)
+                    .map(({ allDefinitions, images, ...rest }: WordBankItem) => ({
+                        ...rest,
+                        images: images?.slice(0, 1),
+                    })),
+            }),
             merge: (persisted: any, current: any) => {
                 const persistedWords: WordBankItem[] = Array.isArray(persisted?.words) ? persisted.words : [];
                 const currentWords: WordBankItem[] = Array.isArray(current?.words) ? current.words : [];

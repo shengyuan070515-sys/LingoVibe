@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 import { applyCors, isOriginAllowed } from './_lib/cors.js';
+import { consumeRateLimit, getClientIp } from './_lib/rate-limit.js';
 
 const MAX_CHARS = 4500;
 
@@ -31,6 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method !== 'POST') {
         res.status(405).setHeader('Allow', 'POST, OPTIONS').json({ error: 'Method not allowed' });
+        return;
+    }
+
+    const rl = await consumeRateLimit(getClientIp(req));
+    if (!rl.ok) {
+        res.setHeader('Retry-After', String(rl.retryAfterSec));
+        res.status(429).json({ error: `Rate limit exceeded (${rl.scope})`, retryAfterSec: rl.retryAfterSec });
         return;
     }
 

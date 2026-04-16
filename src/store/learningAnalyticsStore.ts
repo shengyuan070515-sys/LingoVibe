@@ -106,6 +106,16 @@ export const useLearningAnalyticsStore = create<LearningAnalyticsState>()(
                     },
                 };
             },
+            partialize: (state) => {
+                const entries = Object.entries(state.dailyActivity);
+                entries.sort((a, b) => b[0].localeCompare(a[0]));
+                const pruned = Object.fromEntries(entries.slice(0, 365));
+                return {
+                    dailyActivity: pruned,
+                    lifetime: state.lifetime,
+                    backfillFromWordsDone: state.backfillFromWordsDone,
+                };
+            },
         }
     )
 );

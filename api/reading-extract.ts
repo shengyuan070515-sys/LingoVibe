@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, isOriginAllowed } from './_lib/cors.js';
+import { consumeRateLimit, getClientIp } from './_lib/rate-limit.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const origin = req.headers.origin as string | undefined;
@@ -17,6 +18,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method !== 'POST') {
         res.status(405).json({ error: 'Method not allowed' });
+        return;
+    }
+
+    const rl = await consumeRateLimit(getClientIp(req));
+    if (!rl.ok) {
+        res.setHeader('Retry-After', String(rl.retryAfterSec));
+        res.status(429).json({ error: `Rate limit exceeded (${rl.scope})`, retryAfterSec: rl.retryAfterSec });
         return;
     }
 

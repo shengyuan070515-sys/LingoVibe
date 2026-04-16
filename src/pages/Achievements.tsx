@@ -119,7 +119,7 @@ export function AchievementsPage() {
     );
 
     const ctx = {
-        wordCount: words.length,
+        wordCount: words.filter((w) => !w.id.startsWith('demo-')).length,
         streak,
         activeDays,
         life: lifetime,
@@ -130,7 +130,7 @@ export function AchievementsPage() {
     return (
         <div className="mx-auto flex max-w-5xl flex-col gap-6 px-0 sm:gap-8">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">成就与奖励</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">学习成就</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                     已解锁 <span className="font-semibold text-indigo-600">{unlockedCount}</span> / {BADGES.length}{' '}
                     枚勋章——继续用 LingoVibe，徽章会跟着亮起来。
