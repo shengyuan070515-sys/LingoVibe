@@ -172,8 +172,6 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
 
     const VISUAL_RETENTION_DISPLAY = Math.min(95, 50 + Math.min(bankWords.length, 12) * 3);
 
-    const categoryPills = ['全部', 'Nature', 'Technology', 'Business', 'Art & Culture', 'Philosophy'] as const;
-
     return (
         <div className="relative flex h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-5.5rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface md:h-[calc(100vh-8rem)] md:max-h-[calc(100vh-8rem)] md:flex-row md:rounded-3xl">
             {showHistory && (
@@ -259,23 +257,6 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
 
                         <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
                             <div className="xl:col-span-9">
-                                <div className="mb-6 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mb-8 [&::-webkit-scrollbar]:hidden">
-                                    {categoryPills.map((label, i) => (
-                                        <button
-                                            key={label}
-                                            type="button"
-                                            className={cn(
-                                                'whitespace-nowrap rounded-full px-5 py-2 text-sm font-semibold transition-colors',
-                                                i === 0
-                                                    ? 'bg-stitch-primary text-white'
-                                                    : 'bg-stitch-surface-container-high text-stitch-on-surface-variant hover:bg-stitch-surface-container-highest'
-                                            )}
-                                        >
-                                            {label === '全部' ? 'All Words' : label}
-                                        </button>
-                                    ))}
-                                </div>
-
                                 <AnimatePresence mode="wait">
                                     {isLoading ? (
                                         <motion.div

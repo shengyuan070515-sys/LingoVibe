@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Check, Download, Pencil, Share2, Volume2, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { VisualDictionaryCardBody } from "@/components/reading/visual-dictionary-card-body";
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { fetchUnsplashImages } from "@/lib/unsplash";
@@ -15,6 +16,7 @@ interface WordDetailModalProps {
 export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps) {
     const modalRef = React.useRef<HTMLDivElement>(null);
     const { updateWord } = useWordBankStore();
+    const { toast } = useToast();
     const [isEditing, setIsEditing] = React.useState(false);
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [activeImageIndex, setActiveImageIndex] = React.useState(0);
@@ -93,14 +95,23 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
     };
 
     const handleDownloadCard = () => {
-        // 保持现有行为（目前只是占位日志），但文案明确为下载海报
-        console.log('Downloading card:', word);
+        toast('卡片下载功能即将推出', 'default');
     };
 
-    // 分享功能
-    const handleShare = () => {
-        // 这里可以实现分享功能
-        console.log('Sharing card:', word);
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: word.word,
+                    text: `${word.word} — ${word.translation || ''}`,
+                });
+            } catch {
+                /* user cancelled */
+            }
+        } else {
+            await navigator.clipboard.writeText(`${word.word} — ${word.translation || ''}`);
+            toast('已复制到剪贴板', 'success');
+        }
     };
 
     if (!isOpen) return null;
@@ -277,7 +288,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
 
                     {!isEditing && (
                         <Button
-                            onClick={handleShare}
+                            onClick={() => void handleShare()}
                             variant="outline"
                             className="w-12 h-12 border border-gray-200 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-50"
                         >

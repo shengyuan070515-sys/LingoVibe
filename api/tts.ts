@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
+import { applyCors, isOriginAllowed } from './_lib/cors.js';
 
 const MAX_CHARS = 4500;
 
@@ -14,17 +15,17 @@ function getTtsClient(): TextToSpeechClient | null {
     }
 }
 
-function cors(res: VercelResponse) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    cors(res);
+    const origin = req.headers.origin as string | undefined;
+    applyCors(res, origin);
 
     if (req.method === 'OPTIONS') {
         res.status(204).end();
+        return;
+    }
+
+    if (origin && !isOriginAllowed(origin)) {
+        res.status(403).json({ error: 'Origin not allowed' });
         return;
     }
 

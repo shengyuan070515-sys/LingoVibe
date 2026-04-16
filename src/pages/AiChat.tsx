@@ -37,7 +37,7 @@ import {
 } from '@/lib/ai-chat';
 import { cn } from '@/lib/utils';
 import { callAiProxy } from '@/lib/api-client';
-import { recordChatMessage } from '@/store/learningAnalyticsStore';
+import { recordChatMessage, useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
 import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -629,9 +629,10 @@ export function AiChatPage() {
         setIsCompletingWord(false);
     };
 
-    const MOCK_INSIGHT_FLOW = 82;
-    const MOCK_NEW_WORDS = 12;
-    const MOCK_FLUENCY = 'B1+';
+    const lifetime = useLearningAnalyticsStore((s) => s.lifetime);
+    const wordCount = useWordBankStore((s) => s.words.filter((w) => w.type === 'word').length);
+    const totalInteractions = lifetime.chatMessages + lifetime.srsReviews + lifetime.readingSessions + lifetime.visualLookups;
+    const insightFlow = totalInteractions > 0 ? Math.min(99, Math.round((lifetime.chatMessages / totalInteractions) * 100)) : 0;
 
     return (
         <>
@@ -790,7 +791,7 @@ export function AiChatPage() {
                         </Button>
                     </div>
                     <div className="flex-1 space-y-1 overflow-y-auto p-2.5">
-                        {sessions.sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
+                        {[...sessions].sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
                             <div key={session.id} className="group relative">
                                 <button 
                                     type="button"
@@ -1089,12 +1090,12 @@ export function AiChatPage() {
                             <div className="rounded-xl border border-stitch-outline/5 bg-stitch-surface-container-lowest p-5 shadow-sm">
                                 <div className="mb-4 flex items-center justify-between">
                                     <span className="text-xs font-bold text-stitch-on-surface-variant">Conversation Flow</span>
-                                    <span className="text-xs font-black text-stitch-secondary">{MOCK_INSIGHT_FLOW}%</span>
+                                    <span className="text-xs font-black text-stitch-secondary">{insightFlow}%</span>
                                 </div>
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-stitch-surface-container-highest">
                                     <div
                                         className="h-full rounded-full bg-stitch-secondary"
-                                        style={{ width: `${MOCK_INSIGHT_FLOW}%` }}
+                                        style={{ width: `${insightFlow}%` }}
                                     />
                                 </div>
                             </div>
@@ -1102,15 +1103,15 @@ export function AiChatPage() {
                                 <div className="flex flex-col gap-2 rounded-xl bg-stitch-primary-fixed/30 p-4">
                                     <BookOpen className="h-5 w-5 text-stitch-primary" />
                                     <div>
-                                        <p className="text-[10px] font-bold uppercase text-stitch-primary/70">New Words</p>
-                                        <p className="text-xl font-black text-stitch-primary">{MOCK_NEW_WORDS}</p>
+                                        <p className="text-[10px] font-bold uppercase text-stitch-primary/70">Words</p>
+                                        <p className="text-xl font-black text-stitch-primary">{wordCount}</p>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2 rounded-xl bg-stitch-tertiary-fixed/30 p-4">
                                     <Bolt className="h-5 w-5 text-stitch-tertiary" />
                                     <div>
-                                        <p className="text-[10px] font-bold uppercase text-stitch-tertiary/70">Fluency</p>
-                                        <p className="text-xl font-black text-stitch-tertiary">{MOCK_FLUENCY}</p>
+                                        <p className="text-[10px] font-bold uppercase text-stitch-tertiary/70">Chats</p>
+                                        <p className="text-xl font-black text-stitch-tertiary">{lifetime.chatMessages}</p>
                                     </div>
                                 </div>
                             </div>

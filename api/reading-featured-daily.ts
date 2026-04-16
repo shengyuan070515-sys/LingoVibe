@@ -1,13 +1,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { currentDateKeyShanghai, ensureFeaturedForDate } from './_lib/reading-featured-cache.js';
+import { applyCors, isOriginAllowed } from './_lib/cors.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    const origin = req.headers.origin as string | undefined;
+    applyCors(res, origin);
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+    }
+
+    if (origin && !isOriginAllowed(origin)) {
+        res.status(403).json({ error: 'Origin not allowed' });
+        return;
+    }
+
     if (req.method !== 'GET') {
         res.status(405).json({ error: 'Method not allowed' });
         return;
     }
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
 
     const dateKey =
         typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
