@@ -1,29 +1,8 @@
 import type { ReadingDifficulty } from '@/store/readingLibraryStore';
-
-function getApiBase(): string {
-    return ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-}
+import { callAiProxy } from '@/lib/api-client';
 
 async function callProxy(payload: object): Promise<string> {
-    const base = getApiBase();
-    const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-        let errMsg = `请求失败 ${res.status}`;
-        try {
-            const errBody = await res.json();
-            errMsg = (errBody as any)?.error || (errBody as any)?.detail || errMsg;
-        } catch { /* ignore */ }
-        throw new Error(errMsg);
-    }
-
-    const data = await res.json();
+    const data = await callAiProxy(payload as Record<string, unknown>);
     return String((data as any)?.choices?.[0]?.message?.content ?? '').trim();
 }
 

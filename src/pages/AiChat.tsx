@@ -36,6 +36,7 @@ import {
     type AiChatPersistedState,
 } from '@/lib/ai-chat';
 import { cn } from '@/lib/utils';
+import { callAiProxy } from '@/lib/api-client';
 import { recordChatMessage } from '@/store/learningAnalyticsStore';
 import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 import { Button } from "@/components/ui/button";
@@ -475,28 +476,20 @@ export function AiChatPage() {
     // AI 自动补全单词信息（走后端代理，无需前端 key）
     const completeWordInfo = async (word: string, context: string) => {
         try {
-            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-            const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { 
-                            role: 'system', 
-                            content: '你是一个专业的英语单词本助手。请为用户提供的单词进行补全。你必须严格返回 JSON 格式，不要包含任何 markdown 代码块标识。' 
-                        },
-                        { 
-                            role: 'user', 
-                            content: `单词: "${word}"\n上下文: "${context}"\n请提供该词在此语境下的中文翻译、词性、该词的国际音标 (phonetic，例如 /dɪˈskʌsɪŋ/) 以及一个简单的英文例句。格式：{"translation": "...", "pos": "...", "phonetic": "...", "example": "..."}` 
-                        }
-                    ],
-                    response_format: { type: 'json_object' }
-                })
+            const data = await callAiProxy({
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: '你是一个专业的英语单词本助手。请为用户提供的单词进行补全。你必须严格返回 JSON 格式，不要包含任何 markdown 代码块标识。' 
+                    },
+                    { 
+                        role: 'user', 
+                        content: `单词: "${word}"\n上下文: "${context}"\n请提供该词在此语境下的中文翻译、词性、该词的国际音标 (phonetic，例如 /dɪˈskʌsɪŋ/) 以及一个简单的英文例句。格式：{"translation": "...", "pos": "...", "phonetic": "...", "example": "..."}` 
+                    }
+                ],
+                response_format: { type: 'json_object' }
             });
-            if (!res.ok) throw new Error("API 请求失败");
-            const data = await res.json() as any;
-            const raw = data?.choices?.[0]?.message?.content;
+            const raw = (data as any)?.choices?.[0]?.message?.content;
             return JSON.parse(raw);
         } catch (e) {
             console.error('Word completion error:', e);
@@ -507,28 +500,19 @@ export function AiChatPage() {
 
     const translatePhrase = React.useCallback(async (text: string, context: string) => {
         try {
-            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-            const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { 
-                            role: 'system', 
-                            content: 'You are a professional translator. Translate the given English phrase briefly and accurately into Chinese based on its context. Return ONLY the translation text.' 
-                        },
-                        { role: 'user', content: `Phrase: "${text}"\nContext: "${context}"` }
-                    ],
-                    max_tokens: 50,
-                    temperature: 0.2,
-                })
+            const data = await callAiProxy({
+                messages: [
+                    { 
+                        role: 'system', 
+                        content: 'You are a professional translator. Translate the given English phrase briefly and accurately into Chinese based on its context. Return ONLY the translation text.' 
+                    },
+                    { role: 'user', content: `Phrase: "${text}"\nContext: "${context}"` }
+                ],
+                max_tokens: 50,
+                temperature: 0.2,
             });
-            if (res.ok) {
-                const data = await res.json() as any;
-                const translation = (data?.choices?.[0]?.message?.content ?? '').trim();
-                setSelectionBox(prev => ({ ...prev, translation, isLoading: false }));
-            }
+            const translation = String((data as any)?.choices?.[0]?.message?.content ?? '').trim();
+            setSelectionBox(prev => ({ ...prev, translation, isLoading: false }));
         } catch (error) {
             console.error('Translation error:', error);
             setSelectionBox(prev => ({ ...prev, translation: '翻译失败', isLoading: false }));

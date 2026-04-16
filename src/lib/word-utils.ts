@@ -14,27 +14,10 @@ export type WordBankKeyTestResult =
     | { ok: true }
     | { ok: false; message: string };
 
-function getApiBase(): string {
-    return ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-}
+import { callAiProxy } from '@/lib/api-client';
 
 async function callProxy(payload: object): Promise<unknown> {
-    const base = getApiBase();
-    const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-        let errMsg = `请求失败 ${res.status}`;
-        try {
-            const errBody = await res.json();
-            errMsg = (errBody as any)?.error || (errBody as any)?.detail || errMsg;
-        } catch { /* ignore */ }
-        throw new Error(errMsg);
-    }
-    return res.json();
+    return callAiProxy(payload as Record<string, unknown>);
 }
 
 function buildMinimalWordData(word: string, reason?: string): StandardWordData {

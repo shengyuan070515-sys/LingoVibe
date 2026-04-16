@@ -243,9 +243,7 @@ export function parseEmmaResponse(text: string) {
 
 // ─── 代理调用工具 ────────────────────────────────────────────────────────────
 
-function getApiBase(): string {
-    return ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-}
+import { callAiProxy } from '@/lib/api-client';
 
 interface DeepSeekPayload {
     messages: Array<{ role: string; content: string }>;
@@ -255,25 +253,7 @@ interface DeepSeekPayload {
 }
 
 async function callProxy(payload: DeepSeekPayload): Promise<string> {
-    const base = getApiBase();
-    const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-        let errMsg = `请求失败 ${res.status}`;
-        try {
-            const errBody = await res.json();
-            errMsg = (errBody as any)?.error || (errBody as any)?.detail || errMsg;
-        } catch { /* ignore */ }
-        throw new Error(errMsg);
-    }
-
-    const data = await res.json();
+    const data = await callAiProxy(payload as unknown as Record<string, unknown>);
     const content = (data as any)?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim()) {
         throw new Error('接口未返回有效内容，请稍后重试');

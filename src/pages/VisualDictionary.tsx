@@ -18,6 +18,7 @@ import { SearchHistorySidebar, SearchHistoryItem } from "@/components/visual-dic
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fetchUnsplashImages } from "@/lib/unsplash";
+import { callAiProxy } from "@/lib/api-client";
 import { recordVisualLookup } from "@/store/learningAnalyticsStore";
 
 export function VisualDictionaryPage() {
@@ -121,43 +122,30 @@ export function VisualDictionaryPage() {
 
         setIsLoading(true);
         try {
-            const base = ((import.meta.env.VITE_READING_API_BASE as string | undefined) ?? '').trim().replace(/\/$/, '');
-            const proxyUrl = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
-
             // Concurrent requests: AI proxy + Unsplash
-            const [proxyRes, imageUrls] = await Promise.all([
-                fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        messages: [
-                            {
-                                role: 'system',
-                                content: 'You are a visual dictionary assistant. Return ONLY JSON format.',
-                            },
-                            {
-                                role: 'user',
-                                content: `For the word "${query}", provide:
+            const [data, imageUrls] = await Promise.all([
+                callAiProxy({
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are a visual dictionary assistant. Return ONLY JSON format.',
+                        },
+                        {
+                            role: 'user',
+                            content: `For the word "${query}", provide:
 1. definition: a short English definition (under 15 words).
 2. synonyms: 3 English synonyms.
 3. color: a HEX color code representing the word's mood/vibe.
 Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}`,
-                            },
-                        ],
-                        response_format: { type: 'json_object' },
-                        temperature: 0.3,
-                    }),
+                        },
+                    ],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.3,
                 }),
                 fetchUnsplashImages(query, { perPage: 3 }),
             ]);
 
-            if (!proxyRes.ok) {
-                const err = await proxyRes.json().catch(() => ({}));
-                throw new Error((err as any)?.error || `查词失败 ${proxyRes.status}`);
-            }
-
-            const data = await proxyRes.json() as any;
-            const llmContent = JSON.parse(data.choices[0].message.content);
+            const llmContent = JSON.parse((data as any).choices[0].message.content);
             const safeImages = Array.isArray(imageUrls) ? imageUrls : [];
 
             const newEntry: Partial<Omit<WordBankItem, 'id' | 'addedAt' | 'nextReviewDate' | 'interval' | 'level'>> = {

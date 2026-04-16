@@ -104,12 +104,13 @@ export const useWordBankStore = create<WordBankState>()(
                     extraData = p;
                 }
 
-                if (!targetWord || typeof targetWord !== 'string') {
+                // 先 trim 再判空，避免 "   " 这种纯空白输入绕过拦截
+                targetWord = typeof targetWord === 'string' ? targetWord.trim() : '';
+
+                if (!targetWord) {
                     console.warn("[WordBankStore] 接收到了空数据，静默拦截", payload);
                     return; // 不抛出Error，绝对不弹报错
                 }
-
-                targetWord = targetWord.trim();
 
                 // 2. 查重：如果有，就不加了，也不报错
                 const state = get();
