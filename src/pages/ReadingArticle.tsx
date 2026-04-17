@@ -121,6 +121,10 @@ function transformChildren(
             return renderSegments(plan(child), handlers);
         }
         if (React.isValidElement(child)) {
+            // Avoid corrupting semantics in inline code / links.
+            if (typeof child.type === 'string' && (child.type === 'code' || child.type === 'a')) {
+                return child;
+            }
             const inner = (child.props as { children?: React.ReactNode }).children;
             if (inner == null) return child;
             return React.cloneElement(child, undefined, transformChildren(inner, plan, handlers));
