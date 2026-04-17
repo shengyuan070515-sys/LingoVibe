@@ -6,6 +6,8 @@ import { VisualDictionaryCardBody } from "@/components/reading/visual-dictionary
 import { useWordBankStore, WordBankItem } from "@/store/wordBankStore";
 import { fetchUnsplashImages } from "@/lib/unsplash";
 import { speakEnglish } from '@/lib/speak-english';
+import { useReviewLogStore } from '@/store/reviewLogStore';
+import { computeWordAccuracy } from '@/lib/word-stats';
 
 interface WordDetailModalProps {
     word: WordBankItem;
@@ -17,6 +19,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
     const modalRef = React.useRef<HTMLDivElement>(null);
     const { updateWord } = useWordBankStore();
     const { toast } = useToast();
+    const allEntries = useReviewLogStore((s) => s.entries);
     const [isEditing, setIsEditing] = React.useState(false);
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [activeImageIndex, setActiveImageIndex] = React.useState(0);
@@ -38,6 +41,12 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
             exampleTranslation: word.exampleTranslation || '',
         });
     }, [word.id, word.translation, word.phonetic, word.pos, word.exampleSentence, word.exampleTranslation]);
+
+    const wordEntries = React.useMemo(
+        () => allEntries.filter((e) => e.wordId === word.id).slice(0, 10),
+        [allEntries, word.id]
+    );
+    const accuracy = React.useMemo(() => computeWordAccuracy(allEntries, word.id), [allEntries, word.id]);
 
     React.useEffect(() => {
         if (!isOpen) return;
@@ -247,6 +256,57 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                         isSpeaking={isSpeaking}
                         onSpeak={() => playAudio(word.word)}
                     />
+                )}
+
+                {word.type === 'word' && !isEditing && (
+                    <section className="mt-6 border-t border-slate-100 pt-5">
+                        <header className="mb-2 flex items-baseline justify-between">
+                            <h3 className="text-sm font-semibold text-slate-700">最近复习</h3>
+                            <span className="text-[11px] text-slate-500 tabular-nums">
+                                {accuracy.rate !== null
+                                    ? `正确率 ${Math.round(accuracy.rate * 100)}% · 共 ${accuracy.totalReviews} 次`
+                                    : accuracy.totalReviews > 0
+                                      ? `共 ${accuracy.totalReviews} 次（不足 3 次，暂不显示正确率）`
+                                      : '还没有复习记录'}
+                            </span>
+                        </header>
+                        {wordEntries.length === 0 ? (
+                            <p className="text-xs text-slate-400">到生词本点「闪卡复习」开始记录吧。</p>
+                        ) : (
+                            <ul className="space-y-1">
+                                {wordEntries.map((e) => (
+                                    <li
+                                        key={`${e.at}-${e.wordId}`}
+                                        className="flex items-center justify-between text-xs text-slate-600"
+                                    >
+                                        <span
+                                            className={
+                                                e.outcome === 'know'
+                                                    ? 'font-medium text-emerald-700'
+                                                    : e.outcome === 'forgot'
+                                                      ? 'font-medium text-rose-700'
+                                                      : 'font-medium text-amber-700'
+                                            }
+                                        >
+                                            {e.outcome === 'know'
+                                                ? '✓ 记得'
+                                                : e.outcome === 'forgot'
+                                                  ? '✗ 忘记'
+                                                  : '… 学习中'}
+                                        </span>
+                                        <time className="tabular-nums text-slate-400">
+                                            {new Date(e.at).toLocaleString('zh-CN', {
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </time>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
                 )}
 
                 {/* 底部操作区 */}
