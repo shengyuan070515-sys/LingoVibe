@@ -44,6 +44,11 @@ export function useReadingBrowseComplete(
         sentinel.style.width = '100%';
         root.appendChild(sentinel);
 
+        /**
+         * 使用视口作为观察 root，兼容两种情况：
+         *   - scrollRoot 自带内嵌滚动（历史做法）
+         *   - scrollRoot 随页面自然流动（当前 2 列布局）
+         */
         const obs = new IntersectionObserver(
             (entries) => {
                 const hit = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.25);
@@ -52,7 +57,7 @@ export function useReadingBrowseComplete(
                     setReachedEnd(true);
                 }
             },
-            { root, threshold: [0, 0.25, 0.5, 1] }
+            { root: null, threshold: [0, 0.25, 0.5, 1] }
         );
         obs.observe(sentinel);
 

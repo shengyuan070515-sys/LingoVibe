@@ -54,7 +54,7 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                 </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="flex flex-col gap-3">
                 {items.map((item, idx) => {
                     const saved = isSaved(item.word);
                     return (

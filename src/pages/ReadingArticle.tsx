@@ -371,8 +371,12 @@ export function ReadingArticleView({
             document.body
         );
 
+    const hasSidebar =
+        (article.keyVocabulary && article.keyVocabulary.length > 0) ||
+        (article.quiz && article.quiz.length > 0);
+
     return (
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
             {bubblePortal}
 
             <ReadingWordCardModal
@@ -436,103 +440,139 @@ export function ReadingArticleView({
 
             <p className="text-xs text-slate-500">{progressLabel}</p>
 
-            <div className="sticky top-0 z-30 -mx-1 flex flex-wrap items-center gap-1 border-b border-slate-100/90 bg-white/95 py-2 backdrop-blur-sm">
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1"
-                    disabled={transLoading}
-                    onClick={() => void handleTranslateFull()}
-                >
-                    {transLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
-                    翻译全文
-                </Button>
-                <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => void speakEnglish(displayBody)}>
-                    <Volume2 className="h-3.5 w-3.5" />
-                    朗读全文
-                </Button>
-            </div>
-
-            {fullZhOpen && fullZh ? (
-                <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
-                    <p className="mb-1 text-xs font-semibold text-slate-500">全文译文（节选上限内）</p>
-                    <p className="whitespace-pre-wrap leading-relaxed">{fullZh}</p>
-                    <Button type="button" variant="ghost" size="sm" className="mt-2 h-8" onClick={() => setFullZhOpen(false)}>
-                        隐藏
-                    </Button>
-                </div>
-            ) : null}
-
-            {selZhOpen && selZh ? (
-                <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
-                    <p className="mb-1 text-xs font-semibold text-slate-500">选区译文（仅中文）</p>
-                    <p className="leading-relaxed">{selZh}</p>
-                    <Button type="button" variant="ghost" size="sm" className="mt-2 h-8" onClick={() => setSelZhOpen(false)}>
-                        隐藏
-                    </Button>
-                </div>
-            ) : null}
-
-            {grammar ? (
-                <div className="rounded-xl border border-amber-100 bg-amber-50/90 p-3 text-sm text-amber-950">
-                    <p className="mb-1 text-xs font-semibold">语法要点</p>
-                    <p className="whitespace-pre-wrap leading-relaxed">{grammar}</p>
-                </div>
-            ) : null}
-
             <div
-                ref={scrollRef}
                 className={cn(
-                    'max-h-[min(70vh,520px)] overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm',
-                    'select-text'
+                    'grid gap-6',
+                    hasSidebar ? 'lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start' : ''
                 )}
             >
-                <div
-                    className={cn(
-                        'prose prose-slate max-w-none',
-                        'prose-headings:scroll-mt-4 prose-headings:font-semibold prose-headings:text-slate-800',
-                        'prose-p:text-[15px] prose-p:leading-[1.75] prose-p:text-slate-800 prose-p:break-words',
-                        'prose-li:my-0.5 prose-li:marker:text-slate-400',
-                        'prose-blockquote:border-teal-200 prose-blockquote:text-slate-600',
-                        'prose-code:rounded prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:text-slate-800 prose-code:before:content-none prose-code:after:content-none',
-                        'prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100',
-                        'prose-hr:border-slate-200',
-                        'prose-table:text-sm'
-                    )}
-                >
-                    {summaryMode ? (
-                        <div className="not-prose rounded-xl border border-amber-200/90 bg-amber-50/95 p-4 shadow-sm">
-                            <p className="text-[13px] font-semibold text-amber-950">核心摘要</p>
-                            <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-amber-950/95">{displayBody}</p>
-                            {article.canonicalUrl ? (
-                                <a
-                                    href={article.canonicalUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="mt-4 flex w-full items-center justify-center rounded-xl bg-teal-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:bg-teal-700"
-                                >
-                                    原文有付费墙限制，已为您提取核心摘要。想看全文请点此去官网。
-                                </a>
-                            ) : null}
+                <div className="flex min-w-0 flex-col gap-4">
+                    <div className="sticky top-0 z-30 -mx-1 flex flex-wrap items-center gap-1 border-b border-slate-100/90 bg-white/95 py-2 backdrop-blur-sm">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1"
+                            disabled={transLoading}
+                            onClick={() => void handleTranslateFull()}
+                        >
+                            {transLoading ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <Languages className="h-3.5 w-3.5" />
+                            )}
+                            翻译全文
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1"
+                            onClick={() => void speakEnglish(displayBody)}
+                        >
+                            <Volume2 className="h-3.5 w-3.5" />
+                            朗读全文
+                        </Button>
+                    </div>
+
+                    {fullZhOpen && fullZh ? (
+                        <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
+                            <p className="mb-1 text-xs font-semibold text-slate-500">全文译文（节选上限内）</p>
+                            <p className="whitespace-pre-wrap leading-relaxed">{fullZh}</p>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 h-8"
+                                onClick={() => setFullZhOpen(false)}
+                            >
+                                隐藏
+                            </Button>
                         </div>
-                    ) : displayBody.trim() ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={READING_MARKDOWN_COMPONENTS}>
-                            {displayBody}
-                        </ReactMarkdown>
-                    ) : (
-                        <p className="text-[15px] text-slate-500">暂无正文</p>
-                    )}
+                    ) : null}
+
+                    {selZhOpen && selZh ? (
+                        <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
+                            <p className="mb-1 text-xs font-semibold text-slate-500">选区译文（仅中文）</p>
+                            <p className="leading-relaxed">{selZh}</p>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 h-8"
+                                onClick={() => setSelZhOpen(false)}
+                            >
+                                隐藏
+                            </Button>
+                        </div>
+                    ) : null}
+
+                    {grammar ? (
+                        <div className="rounded-xl border border-amber-100 bg-amber-50/90 p-3 text-sm text-amber-950">
+                            <p className="mb-1 text-xs font-semibold">语法要点</p>
+                            <p className="whitespace-pre-wrap leading-relaxed">{grammar}</p>
+                        </div>
+                    ) : null}
+
+                    <div
+                        ref={scrollRef}
+                        className="rounded-2xl border border-slate-100 bg-white/80 p-5 shadow-sm select-text"
+                    >
+                        <div
+                            className={cn(
+                                'prose prose-slate max-w-none',
+                                'prose-headings:scroll-mt-4 prose-headings:font-semibold prose-headings:text-slate-800',
+                                'prose-p:text-[15px] prose-p:leading-[1.8] prose-p:text-slate-800 prose-p:break-words',
+                                'prose-li:my-0.5 prose-li:marker:text-slate-400',
+                                'prose-blockquote:border-teal-200 prose-blockquote:text-slate-600',
+                                'prose-code:rounded prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:text-slate-800 prose-code:before:content-none prose-code:after:content-none',
+                                'prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100',
+                                'prose-hr:border-slate-200',
+                                'prose-table:text-sm'
+                            )}
+                        >
+                            {summaryMode ? (
+                                <div className="not-prose rounded-xl border border-amber-200/90 bg-amber-50/95 p-4 shadow-sm">
+                                    <p className="text-[13px] font-semibold text-amber-950">核心摘要</p>
+                                    <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-amber-950/95">
+                                        {displayBody}
+                                    </p>
+                                    {article.canonicalUrl ? (
+                                        <a
+                                            href={article.canonicalUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="mt-4 flex w-full items-center justify-center rounded-xl bg-teal-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:bg-teal-700"
+                                        >
+                                            原文有付费墙限制，已为您提取核心摘要。想看全文请点此去官网。
+                                        </a>
+                                    ) : null}
+                                </div>
+                            ) : displayBody.trim() ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={READING_MARKDOWN_COMPONENTS}
+                                >
+                                    {displayBody}
+                                </ReactMarkdown>
+                            ) : (
+                                <p className="text-[15px] text-slate-500">暂无正文</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
+
+                {hasSidebar ? (
+                    <aside className="flex flex-col gap-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+                        {article.keyVocabulary && article.keyVocabulary.length > 0 ? (
+                            <ReadingVocabCards items={article.keyVocabulary} />
+                        ) : null}
+                        {article.quiz && article.quiz.length > 0 ? (
+                            <ReadingQuiz items={article.quiz} />
+                        ) : null}
+                    </aside>
+                ) : null}
             </div>
-
-            {article.keyVocabulary && article.keyVocabulary.length > 0 ? (
-                <ReadingVocabCards items={article.keyVocabulary} />
-            ) : null}
-
-            {article.quiz && article.quiz.length > 0 ? (
-                <ReadingQuiz items={article.quiz} />
-            ) : null}
 
             <p className="text-[11px] leading-relaxed text-slate-500">
                 翻译与语法分析由服务端 AI 代理提供，无需额外配置。朗读使用浏览器语音合成，文本在本地处理。
