@@ -187,6 +187,7 @@ export function ReadingWordCardModal({
                                 exampleTranslation={data.exampleZh}
                                 isSpeaking={isSpeaking}
                                 onSpeak={playWord}
+                                difficultyLabel={data.difficultyLabel}
                             />
                             <p className="mb-4 text-center text-[10px] text-gray-400">{articleContextLabel}</p>
                             <div className="mt-4 flex gap-2">

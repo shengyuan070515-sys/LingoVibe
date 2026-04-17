@@ -10,6 +10,23 @@ export interface VisualDictionaryCardBodyProps {
     exampleTranslation?: string;
     isSpeaking?: boolean;
     onSpeak: () => void;
+    /** 词典命中时显示的难度标签（如 CET6 / B2 / GRE） */
+    difficultyLabel?: string;
+}
+
+/**
+ * 把 ECDICT / AI 返回的中文释义打磨成可读多行文本。
+ * - 字面 `\n` → 真·换行
+ * - Windows 风 `\r\n` 也规整
+ * - 连续多空白压成单空格
+ */
+function cleanTranslation(raw: string): string {
+    return raw
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\r\n/g, '\n')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
 }
 
 export function VisualDictionaryCardBody({
@@ -21,16 +38,26 @@ export function VisualDictionaryCardBody({
     exampleTranslation,
     isSpeaking,
     onSpeak,
+    difficultyLabel,
 }: VisualDictionaryCardBodyProps) {
+    const translationClean = cleanTranslation(translation);
     return (
         <>
             <div className="mb-6 text-center">
                 <h1 className="mb-3 font-serif text-5xl font-bold tracking-tight text-gray-900">{word}</h1>
-                <div className="mt-3 flex items-center justify-center gap-2">
+                <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                     <span className="text-sm text-gray-500">{phonetic.trim() || 'No phonetic'}</span>
                     <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                         {pos.trim() || 'Unknown'}
                     </span>
+                    {difficultyLabel && (
+                        <span
+                            className="rounded-full border border-teal-400/40 bg-teal-50 px-2 py-0.5 text-[11px] font-medium text-teal-700"
+                            title="词典判定的学习难度档位"
+                        >
+                            {difficultyLabel}
+                        </span>
+                    )}
                     <Button
                         type="button"
                         variant="ghost"
@@ -45,7 +72,9 @@ export function VisualDictionaryCardBody({
 
             <div className="mb-8 text-center">
                 <div className="mx-auto mb-4 mt-6 h-[2px] w-8 bg-gray-200" />
-                <p className="text-base font-medium text-gray-800">{translation.trim() || 'No translation available'}</p>
+                <p className="whitespace-pre-line text-base font-medium text-gray-800">
+                    {translationClean || 'No translation available'}
+                </p>
             </div>
 
             {(exampleSentence?.trim() || exampleTranslation?.trim()) && (
