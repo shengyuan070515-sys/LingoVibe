@@ -9,14 +9,79 @@ import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { speakEnglish } from '@/lib/speak-english';
 import type { WordBankSortMode } from '@/store/wordBankStore';
+import { useReviewLogStore } from '@/store/reviewLogStore';
+import { computeWordAccuracy } from '@/lib/word-stats';
 
 /** 每页最多显示的词条数，满页后进入下一页 */
 const WORD_BANK_PAGE_SIZE = 12;
+
+function AccuracyBadge({
+    totalReviews,
+    countedReviews,
+    rate,
+    onImage,
+}: {
+    totalReviews: number;
+    countedReviews: number;
+    rate: number | null;
+    onImage: boolean;
+}) {
+    if (totalReviews === 0) {
+        return (
+            <span
+                className={cn(
+                    'text-[11px] font-medium tabular-nums',
+                    onImage ? 'text-white/85' : 'text-slate-400'
+                )}
+                style={onImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
+            >
+                未复习
+            </span>
+        );
+    }
+
+    if (rate === null) {
+        return (
+            <span
+                className={cn(
+                    'text-[11px] font-medium tabular-nums',
+                    onImage ? 'text-white/90' : 'text-slate-500'
+                )}
+                style={onImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
+                title={`已复习 ${countedReviews} 次（满 3 次后显示正确率）`}
+            >
+                复习 {totalReviews} 次
+            </span>
+        );
+    }
+
+    const pct = Math.round(rate * 100);
+    const tone = pct >= 80 ? 'ok' : pct >= 50 ? 'warn' : 'bad';
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
+                onImage
+                    ? 'bg-black/35 text-white'
+                    : tone === 'ok'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : tone === 'warn'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-rose-50 text-rose-700'
+            )}
+            style={onImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
+            title={`正确率 ${pct}% · 共复习 ${totalReviews} 次`}
+        >
+            ✓ {pct}% · {totalReviews}次
+        </span>
+    );
+}
 
 export function WordBankPage() {
     const navigate = useNavigate();
     const { words, clearAllWords, removeWord, dedupeWords, sortWords, removeInvalidWords } = useWordBankStore();
     const { toast } = useToast();
+    const reviewEntries = useReviewLogStore((s) => s.entries);
     const [selectedWord, setSelectedWord] = React.useState<WordBankItem | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [filterType, setFilterType] = React.useState<'all' | 'word' | 'sentence'>('all');
@@ -403,6 +468,22 @@ export function WordBankPage() {
                                     )}
                                         </div>
                                         <div className="flex shrink-0 items-center gap-1">
+                                            {item.type === 'word' ? (
+                                                (() => {
+                                                    const { rate, totalReviews, countedReviews } = computeWordAccuracy(
+                                                        reviewEntries,
+                                                        item.id
+                                                    );
+                                                    return (
+                                                        <AccuracyBadge
+                                                            rate={rate}
+                                                            totalReviews={totalReviews}
+                                                            countedReviews={countedReviews}
+                                                            onImage={onImage}
+                                                        />
+                                                    );
+                                                })()
+                                            ) : null}
                                     <Button
                                         variant="ghost"
                                         size="sm"
