@@ -4,6 +4,9 @@ import { callAiProxy, type AiProxyError } from './api-client';
 describe('callAiProxy', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn());
+        // Make tests deterministic: do not inherit machine/CI env defaults.
+        vi.stubEnv('VITE_READING_API_BASE', '');
+        vi.stubEnv('VITE_LINGOVIBE_SIGNING_SECRET', '');
     });
 
     afterEach(() => {
