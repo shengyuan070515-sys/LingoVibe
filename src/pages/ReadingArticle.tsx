@@ -3,7 +3,19 @@ import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, BookMarked, BookmarkCheck, BookmarkPlus, Languages, Loader2, Square, Volume2, Sparkles } from 'lucide-react';
+import {
+    ArrowLeft,
+    BookMarked,
+    BookmarkCheck,
+    BookmarkPlus,
+    Eye,
+    EyeOff,
+    Languages,
+    Loader2,
+    Sparkles,
+    Square,
+    Volume2,
+} from 'lucide-react';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes, fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
@@ -20,11 +32,14 @@ import { useToast } from '@/components/ui/toast';
 import { ReadingWordCardModal } from '@/components/reading/reading-word-card-modal';
 import { ReadingVocabCards } from '@/components/reading/reading-vocab-cards';
 import { ReadingQuiz } from '@/components/reading/reading-quiz';
+import { WordDetailModal } from '@/components/word-detail-modal';
 import { useReadingLibraryStore, type ReadingArticle as RA } from '@/store/readingLibraryStore';
 import { useWordBankStore } from '@/store/wordBankStore';
 import { recordReadingSession } from '@/store/learningAnalyticsStore';
 import { syncDailyLoopDate, useDailyLoopStore } from '@/store/dailyLoopStore';
 import { useEnglishTts } from '@/hooks/use-english-tts';
+import { planHighlightSegments, type HighlightSegment } from '@/lib/reading-highlight';
+import { SelectionInsightPanel, type InsightTab } from '@/components/reading/selection-insight-panel';
 
 const DIFF_LABELS: Record<number, string> = {
     1: '入门',
@@ -34,31 +49,85 @@ const DIFF_LABELS: Record<number, string> = {
     5: '高阶',
 };
 
-const READING_MARKDOWN_COMPONENTS: Components = {
-    a({ node: _n, children, className, href, ...rest }) {
+const SHOW_SAVED_HL_KEY = 'lingovibe_reading_show_saved_highlights';
+
+function readSavedHlPref(): boolean {
+    if (typeof window === 'undefined') return true;
+    const raw = window.localStorage.getItem(SHOW_SAVED_HL_KEY);
+    if (raw === null) return true;
+    return raw === '1';
+}
+
+function writeSavedHlPref(v: boolean): void {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SHOW_SAVED_HL_KEY, v ? '1' : '0');
+}
+
+function renderSegments(
+    segments: HighlightSegment[],
+    handlers: {
+        onPhraseClick: (term: string, e: React.MouseEvent<HTMLElement>) => void;
+        onKeyWordClick: (term: string, e: React.MouseEvent<HTMLElement>) => void;
+        onSavedClick: (term: string, e: React.MouseEvent<HTMLElement>) => void;
+    }
+): React.ReactNode[] {
+    return segments.map((seg, i) => {
+        if (seg.kind === 'none') return seg.text;
+        const base = 'cursor-pointer rounded-sm transition-colors';
+        if (seg.kind === 'phrase') {
+            return (
+                <mark
+                    key={i}
+                    data-term={seg.term}
+                    className={`${base} bg-yellow-200/80 px-1 py-0.5 hover:bg-yellow-300/90 text-inherit`}
+                    onClick={(e) => handlers.onPhraseClick(seg.term!, e)}
+                >
+                    {seg.text}
+                </mark>
+            );
+        }
+        if (seg.kind === 'keyword') {
+            return (
+                <span
+                    key={i}
+                    data-term={seg.term}
+                    className={`${base} border-b border-dashed border-teal-500 hover:border-solid hover:bg-teal-50`}
+                    onClick={(e) => handlers.onKeyWordClick(seg.term!, e)}
+                >
+                    {seg.text}
+                </span>
+            );
+        }
         return (
-            <a
-                {...rest}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(className, 'break-words text-teal-700 underline-offset-2 hover:underline')}
+            <span
+                key={i}
+                data-term={seg.term}
+                className={`${base} border-b border-dotted border-slate-400 hover:border-solid hover:bg-slate-100`}
+                onClick={(e) => handlers.onSavedClick(seg.term!, e)}
             >
-                {children}
-            </a>
+                {seg.text}
+            </span>
         );
-    },
-    img({ node: _n, className, alt, ...rest }) {
-        return (
-            <img
-                {...rest}
-                alt={alt ?? ''}
-                loading="lazy"
-                className={cn(className, 'max-h-[min(50vh,420px)] w-auto max-w-full rounded-lg shadow-sm')}
-            />
-        );
-    },
-};
+    });
+}
+
+function transformChildren(
+    children: React.ReactNode,
+    plan: (text: string) => HighlightSegment[],
+    handlers: Parameters<typeof renderSegments>[1]
+): React.ReactNode {
+    return React.Children.map(children, (child) => {
+        if (typeof child === 'string') {
+            return renderSegments(plan(child), handlers);
+        }
+        if (React.isValidElement(child)) {
+            const inner = (child.props as { children?: React.ReactNode }).children;
+            if (inner == null) return child;
+            return React.cloneElement(child, undefined, transformChildren(inner, plan, handlers));
+        }
+        return child;
+    });
+}
 
 function nodeInside(el: HTMLElement | null, node: Node | null): boolean {
     if (!el || !node) return false;
@@ -76,6 +145,7 @@ type SelBubble =
           top: number;
           text: string;
           kind: 'word' | 'sentence';
+          rect?: DOMRect | null;
       }
     | null;
 
@@ -90,19 +160,25 @@ export function ReadingArticleView({
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
     const setAddedToLibrary = useReadingLibraryStore((s) => s.setAddedToLibrary);
     const addWord = useWordBankStore((s) => s.addWord);
+    const savedWordsList = useWordBankStore((s) => s.words);
     const { toast } = useToast();
     const scrollRef = React.useRef<HTMLDivElement>(null);
 
     const [fullZh, setFullZh] = React.useState<string | null>(null);
     const [fullZhOpen, setFullZhOpen] = React.useState(false);
-    const [selZh, setSelZh] = React.useState<string | null>(null);
-    const [selZhOpen, setSelZhOpen] = React.useState(false);
-    const [grammar, setGrammar] = React.useState<string | null>(null);
-    const [grammarLoading, setGrammarLoading] = React.useState(false);
     const [transLoading, setTransLoading] = React.useState(false);
 
     const [bubble, setBubble] = React.useState<SelBubble>(null);
     const [wordCardWord, setWordCardWord] = React.useState<string | null>(null);
+    const [showSavedHl, setShowSavedHl] = React.useState<boolean>(() => readSavedHlPref());
+    const [detailModalWordId, setDetailModalWordId] = React.useState<string | null>(null);
+    const [insight, setInsight] = React.useState<{
+        open: boolean;
+        sentence: string;
+        tab: InsightTab;
+        rect: DOMRect | null;
+        openedAtScrollTop: number;
+    } | null>(null);
 
     const wordCardCache = React.useRef<Map<string, ReadingWordCardData>>(new Map());
 
@@ -117,6 +193,31 @@ export function ReadingArticleView({
         const raw = stripJinaReaderPreamble(article?.content ?? '');
         return stripMarkdownInlineLinks(raw);
     }, [article?.content, article?.summaryText, summaryMode]);
+
+    const savedWordSet = React.useMemo(() => {
+        const s = new Set<string>();
+        for (const w of savedWordsList) {
+            if (w?.type === 'word' && w.word?.trim()) s.add(w.word.trim().toLowerCase());
+        }
+        return s;
+    }, [savedWordsList]);
+
+    const savedWordRecord = React.useMemo(() => {
+        const m = new Map<string, string>();
+        for (const w of savedWordsList) {
+            if (w?.type === 'word' && w.word?.trim()) {
+                m.set(w.word.trim().toLowerCase(), w.id);
+            }
+        }
+        return m;
+    }, [savedWordsList]);
+
+    const keyWordsList = React.useMemo(
+        () => (article?.keyVocabulary ?? []).map((v) => v.word).filter(Boolean),
+        [article?.keyVocabulary]
+    );
+
+    const phrasesList = React.useMemo(() => article?.keyPhrases ?? [], [article?.keyPhrases]);
 
     React.useEffect(() => {
         syncDailyLoopDate();
@@ -172,8 +273,54 @@ export function ReadingArticleView({
             top,
             text,
             kind,
+            rect,
         });
     }, [toast]);
+
+    const plan = React.useCallback(
+        (text: string) =>
+            planHighlightSegments(text, {
+                phrases: phrasesList,
+                keyWords: keyWordsList,
+                savedWords: showSavedHl ? savedWordSet : new Set<string>(),
+            }),
+        [phrasesList, keyWordsList, savedWordSet, showSavedHl]
+    );
+
+    const openBubbleFor = React.useCallback(
+        (term: string, kind: 'word' | 'sentence', e: React.MouseEvent<HTMLElement>) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const pad = 8;
+            const w = 220;
+            const left = Math.min(Math.max(rect.left + rect.width / 2 - w / 2, pad), window.innerWidth - w - pad);
+            const top = Math.max(rect.top - 42, pad);
+            setBubble({ left, top, text: term, kind, rect });
+        },
+        []
+    );
+
+    const handleSavedClick = React.useCallback(
+        (term: string) => {
+            const id = savedWordRecord.get(term);
+            if (id) setDetailModalWordId(id);
+        },
+        [savedWordRecord]
+    );
+
+    const openInsight = React.useCallback(
+        (sentence: string, tab: InsightTab) => {
+            const rect = bubble?.rect ?? null;
+            setBubble(null);
+            setInsight({
+                open: true,
+                sentence,
+                tab,
+                rect,
+                openedAtScrollTop: scrollRef.current?.scrollTop ?? 0,
+            });
+        },
+        [bubble?.rect]
+    );
 
     React.useEffect(() => {
         const onMouseUp = () => {
@@ -186,7 +333,15 @@ export function ReadingArticleView({
     React.useEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
-        const onScroll = () => setBubble(null);
+        const onScroll = () => {
+            setBubble(null);
+            setInsight((prev) => {
+                if (!prev || !prev.open) return prev;
+                const currentTop = scrollRef.current?.scrollTop ?? 0;
+                if (Math.abs(currentTop - prev.openedAtScrollTop) > 80) return null;
+                return prev;
+            });
+        };
         el.addEventListener('scroll', onScroll, { passive: true });
         return () => el.removeEventListener('scroll', onScroll);
     }, [article?.id, displayBody]);
@@ -220,33 +375,60 @@ export function ReadingArticleView({
         }
     };
 
-    const handleSentenceTranslate = async (sel: string) => {
-        setBubble(null);
-        setTransLoading(true);
-        try {
-            const zh = await fetchEnglishToChineseTranslation(sel.slice(0, 4000));
-            setSelZh(zh || '（无译文）');
-            setSelZhOpen(true);
-        } catch (e) {
-            toast(e instanceof Error ? e.message : '翻译失败', 'error');
-        } finally {
-            setTransLoading(false);
-        }
-    };
+    const readingMarkdownComponents = React.useMemo<Components>(() => {
+        const handlers = {
+            onPhraseClick: (term: string, e: React.MouseEvent<HTMLElement>) =>
+                openBubbleFor(term, 'sentence', e),
+            onKeyWordClick: (term: string, e: React.MouseEvent<HTMLElement>) =>
+                openBubbleFor(term, 'word', e),
+            onSavedClick: (term: string, e: React.MouseEvent<HTMLElement>) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSavedClick(term);
+            },
+        };
 
-    const handleGrammar = async (sel: string) => {
-        setBubble(null);
-        setGrammarLoading(true);
-        setGrammar(null);
-        try {
-            const g = await fetchReadingGrammarNotes(sel);
-            setGrammar(g);
-        } catch (e) {
-            toast(e instanceof Error ? e.message : '分析失败', 'error');
-        } finally {
-            setGrammarLoading(false);
-        }
-    };
+        return {
+            a({ node: _n, children, className, href, ...rest }) {
+                return (
+                    <a
+                        {...rest}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                            className,
+                            'break-words text-teal-700 underline-offset-2 hover:underline'
+                        )}
+                    >
+                        {children}
+                    </a>
+                );
+            },
+            img({ node: _n, className, alt, ...rest }) {
+                return (
+                    <img
+                        {...rest}
+                        alt={alt ?? ''}
+                        loading="lazy"
+                        className={cn(
+                            className,
+                            'max-h-[min(50vh,420px)] w-auto max-w-full rounded-lg shadow-sm'
+                        )}
+                    />
+                );
+            },
+            p({ node: _n, children, ...rest }) {
+                return <p {...rest}>{transformChildren(children, plan, handlers)}</p>;
+            },
+            li({ node: _n, children, ...rest }) {
+                return <li {...rest}>{transformChildren(children, plan, handlers)}</li>;
+            },
+            blockquote({ node: _n, children, ...rest }) {
+                return <blockquote {...rest}>{transformChildren(children, plan, handlers)}</blockquote>;
+            },
+        };
+    }, [handleSavedClick, openBubbleFor, plan]);
 
     const openWordCard = (sel: string) => {
         const w = soleEnglishTokenFromSelection(sel);
@@ -351,8 +533,7 @@ export function ReadingArticleView({
                             size="sm"
                             variant="secondary"
                             className="h-8 flex-1 text-xs"
-                            disabled={transLoading}
-                            onClick={() => void handleSentenceTranslate(bubble.text)}
+                            onClick={() => openInsight(bubble.text, 'translate')}
                         >
                             <Languages className="mr-1 h-3 w-3" />
                             翻译（中文）
@@ -362,10 +543,8 @@ export function ReadingArticleView({
                             size="sm"
                             variant="outline"
                             className="h-8 flex-1 text-xs"
-                            disabled={grammarLoading}
-                            onClick={() => void handleGrammar(bubble.text)}
+                            onClick={() => openInsight(bubble.text, 'grammar')}
                         >
-                            {grammarLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
                             语法分析
                         </Button>
                     </>
@@ -381,6 +560,24 @@ export function ReadingArticleView({
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
             {bubblePortal}
+
+            {insight?.open ? (
+                <SelectionInsightPanel
+                    open
+                    sentence={insight.sentence}
+                    anchorRect={insight.rect}
+                    initialTab={insight.tab}
+                    loadTranslation={(s: string) => fetchEnglishToChineseTranslation(s.slice(0, 4000))}
+                    loadGrammar={(s: string) => fetchReadingGrammarNotes(s)}
+                    onClose={() => setInsight(null)}
+                />
+            ) : null}
+
+            {detailModalWordId ? (() => {
+                const w = savedWordsList.find((x) => x.id === detailModalWordId);
+                if (!w) return null;
+                return <WordDetailModal word={w} isOpen={true} onClose={() => setDetailModalWordId(null)} />;
+            })() : null}
 
             <ReadingWordCardModal
                 isOpen={!!wordCardWord}
@@ -512,6 +709,21 @@ export function ReadingArticleView({
                             )}
                             {articleTts.isPlaying ? '停止朗读' : '朗读全文'}
                         </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 gap-1 text-slate-600 hover:text-slate-900"
+                            onClick={() => {
+                                const next = !showSavedHl;
+                                setShowSavedHl(next);
+                                writeSavedHlPref(next);
+                            }}
+                            title={showSavedHl ? '已标注生词本里的词；点击隐藏' : '已隐藏；点击显示生词本里的词'}
+                        >
+                            {showSavedHl ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                            {showSavedHl ? '隐藏已学词' : '显示已学词'}
+                        </Button>
                     </div>
 
                     {fullZhOpen && fullZh ? (
@@ -527,29 +739,6 @@ export function ReadingArticleView({
                             >
                                 隐藏
                             </Button>
-                        </div>
-                    ) : null}
-
-                    {selZhOpen && selZh ? (
-                        <div className="rounded-xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700">
-                            <p className="mb-1 text-xs font-semibold text-slate-500">选区译文（仅中文）</p>
-                            <p className="leading-relaxed">{selZh}</p>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="mt-2 h-8"
-                                onClick={() => setSelZhOpen(false)}
-                            >
-                                隐藏
-                            </Button>
-                        </div>
-                    ) : null}
-
-                    {grammar ? (
-                        <div className="rounded-xl border border-amber-100 bg-amber-50/90 p-3 text-sm text-amber-950">
-                            <p className="mb-1 text-xs font-semibold">语法要点</p>
-                            <p className="whitespace-pre-wrap leading-relaxed">{grammar}</p>
                         </div>
                     ) : null}
 
@@ -590,7 +779,7 @@ export function ReadingArticleView({
                             ) : displayBody.trim() ? (
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
-                                    components={READING_MARKDOWN_COMPONENTS}
+                                    components={readingMarkdownComponents}
                                 >
                                     {displayBody}
                                 </ReactMarkdown>
