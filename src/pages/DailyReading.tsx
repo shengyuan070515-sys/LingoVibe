@@ -2,7 +2,7 @@ import * as React from 'react';
 import { BookOpen, Loader2, Search, Sparkles, Trash2, Upload, Wand2 } from 'lucide-react';
 import { platformSearch, platformExtractMarkdown, type SearchHit } from '@/lib/reading-platform-api';
 import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featured-api';
-import { generateReadingArticle, GENERATE_EXPECTED_TOTAL_CHARS } from '@/lib/reading-generate-api';
+import { generateReadingArticle, GENERATE_EXPECTED_MS } from '@/lib/reading-generate-api';
 import { estimateReadingDifficulty } from '@/lib/reading-ai';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -73,38 +73,57 @@ function labelForSource(t: string): string {
 
 /**
  * 自选主题生成时的进度展示：
- *   - 进度条：服务端累计字符 / 预期字符数（3500 左右）
+ *   - 进度条：基于时间线性推进，到 85% 时变缓直至 95%，等待服务端 resolve 后外部再切到 100%
  *   - 阶段文案：按进度区间给出拟人化提示，比"转圈圈"更有存在感
+ *
+ * 之所以不用服务端的真实进度：Vercel Node.js Serverless 对 SSE 流式有缓冲，
+ * 在某些客户端表现为 "Failed to fetch"；改为"一次性 JSON 响应 + 前端时间动画"更稳。
  */
-function GenerationProgress({ progress }: { progress: number }) {
-    /**
-     * ratio 真实值（接近完成会超过 1，截断到 1）
-     */
-    const ratio = Math.min(1, progress / GENERATE_EXPECTED_TOTAL_CHARS);
+function GenerationProgress({ startedAt }: { startedAt: number }) {
+    const [now, setNow] = React.useState(() => Date.now());
+
+    React.useEffect(() => {
+        const id = window.setInterval(() => setNow(Date.now()), 200);
+        return () => window.clearInterval(id);
+    }, []);
+
+    const elapsed = Math.max(0, now - startedAt);
 
     /**
-     * 即使服务端尚未产出任何 chunk（ratio=0），也先把进度条顶到 3%，
-     * 避免用户看到一条完全没动的空条心里发慌。
+     * 进度曲线：前 85% 在预期时间内线性走完，
+     * 之后用指数衰减缓缓逼近 95%，避免卡死/超预期时一直停在 85%。
      */
-    const displayRatio = Math.max(0.03, ratio);
+    const expected = GENERATE_EXPECTED_MS;
+    const linearPortion = 0.85;
+    let ratio: number;
+    if (elapsed < expected) {
+        ratio = (elapsed / expected) * linearPortion;
+    } else {
+        /** 超时后从 0.85 向 0.95 慢速靠拢：每多 5 秒推进约一半距离 */
+        const overshoot = elapsed - expected;
+        const halfLife = 5000;
+        const remaining = 0.95 - linearPortion;
+        ratio = 0.95 - remaining * Math.pow(0.5, overshoot / halfLife);
+    }
+    ratio = Math.max(0.03, Math.min(0.95, ratio));
 
     let stageLabel = '正在连接 AI…';
-    if (progress > 0 && ratio < 0.2) stageLabel = '正在构思文章结构…';
-    else if (ratio < 0.5) stageLabel = '正在撰写正文…';
-    else if (ratio < 0.75) stageLabel = '正在挑选重点词汇…';
-    else if (ratio < 0.95) stageLabel = '正在生成阅读理解题…';
-    else if (ratio >= 0.95) stageLabel = '即将完成，正在整理…';
+    if (elapsed > 1200 && ratio < 0.25) stageLabel = '正在构思文章结构…';
+    else if (ratio < 0.55) stageLabel = '正在撰写正文…';
+    else if (ratio < 0.78) stageLabel = '正在挑选重点词汇…';
+    else if (ratio < 0.9) stageLabel = '正在生成阅读理解题…';
+    else stageLabel = '即将完成，正在整理…';
 
     return (
         <div className="mt-3 rounded-lg border border-indigo-100 bg-white/90 p-3">
             <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-slate-700">{stageLabel}</span>
-                <span className="tabular-nums text-slate-500">{Math.round(displayRatio * 100)}%</span>
+                <span className="tabular-nums text-slate-500">{Math.round(ratio * 100)}%</span>
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                 <div
                     className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-[width] duration-200 ease-out"
-                    style={{ width: `${displayRatio * 100}%` }}
+                    style={{ width: `${ratio * 100}%` }}
                 />
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
@@ -139,8 +158,8 @@ export function DailyReadingPage() {
     const [genTopic, setGenTopic] = React.useState('');
     const [genDifficulty, setGenDifficulty] = React.useState<ReadingDifficulty>(3);
     const [generating, setGenerating] = React.useState(false);
-    /** 服务端已经流回来的累计字符数（SSE progress 事件），用来驱动进度条 */
-    const [genProgress, setGenProgress] = React.useState(0);
+    /** 触发进度条开始计时的时间戳（生成开始时写入）；为 null 时隐藏进度 */
+    const [genStartedAt, setGenStartedAt] = React.useState<number | null>(null);
 
     const [openId, setOpenId] = React.useState<string | null>(null);
     const [activeTab, setActiveTab] = React.useState<DailyTab>('featured');
@@ -214,12 +233,11 @@ export function DailyReadingPage() {
             return;
         }
         setGenerating(true);
-        setGenProgress(0);
+        setGenStartedAt(Date.now());
         try {
             const res = await generateReadingArticle({
                 topic,
                 difficulty: genDifficulty,
-                onProgress: (total) => setGenProgress(total),
             });
             const a = res.article;
             const id = addAiArticle({
@@ -240,7 +258,7 @@ export function DailyReadingPage() {
             toast(e instanceof Error ? e.message : '生成失败', 'error');
         } finally {
             setGenerating(false);
-            setGenProgress(0);
+            setGenStartedAt(null);
         }
     };
 
@@ -561,8 +579,8 @@ export function DailyReadingPage() {
                         ))}
                     </div>
 
-                    {generating ? (
-                        <GenerationProgress progress={genProgress} />
+                    {generating && genStartedAt !== null ? (
+                        <GenerationProgress startedAt={genStartedAt} />
                     ) : null}
 
                     {recentAiArticles.length > 0 ? (

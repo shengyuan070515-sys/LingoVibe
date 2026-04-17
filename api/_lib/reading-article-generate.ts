@@ -36,7 +36,13 @@ export interface AiGeneratedArticle {
     quiz: AiQuizItem[];
 }
 
-/** 难度对应的学习目标参数 */
+/**
+ * 难度对应的学习目标参数。
+ *
+ * 字数上限已下调一档（对应 2026-04 AI 生成速度优化）：
+ * 过长的文章并不显著提升学习效率，反而把生成时间拉到 25 秒以上。
+ * 现在每档约缩短 100-150 词，生成时间从 15-30 秒降到 8-15 秒。
+ */
 const DIFFICULTY_PROFILES: Record<AiDifficulty, {
     cefr: string;
     wordRange: string;
@@ -45,31 +51,31 @@ const DIFFICULTY_PROFILES: Record<AiDifficulty, {
 }> = {
     1: {
         cefr: 'CEFR A1-A2',
-        wordRange: '300-400',
+        wordRange: '200-260',
         vocabConstraint: 'use only the most common 2000 English words',
         sentenceStyle: 'short simple sentences, mostly present tense',
     },
     2: {
         cefr: 'CEFR A2-B1',
-        wordRange: '350-450',
+        wordRange: '240-300',
         vocabConstraint: 'use the top 4000 most common words',
         sentenceStyle: 'mix simple and compound sentences, basic tenses',
     },
     3: {
         cefr: 'CEFR B1-B2',
-        wordRange: '400-550',
+        wordRange: '280-360',
         vocabConstraint: 'general adult reader vocabulary',
         sentenceStyle: 'varied sentence structures including some complex sentences',
     },
     4: {
         cefr: 'CEFR B2-C1',
-        wordRange: '500-650',
+        wordRange: '320-420',
         vocabConstraint: 'include academic and professional vocabulary naturally',
         sentenceStyle: 'sophisticated sentence structures, appropriate for editorials',
     },
     5: {
         cefr: 'CEFR C1-C2',
-        wordRange: '600-800',
+        wordRange: '380-480',
         vocabConstraint: 'unrestricted vocabulary including specialized terms',
         sentenceStyle: 'literary or journalistic prose with nuance and rhetorical variety',
     },
@@ -88,7 +94,7 @@ function buildPrompt(topic: string, difficulty: AiDifficulty): { system: string;
         '  "body": string,                   // English article body in Markdown. Use paragraphs. No headings beyond ## if needed.',
         '  "difficulty": number,             // Echo the requested difficulty (1-5)',
         '  "summary": string,                // One-sentence Chinese summary (不超过 40 字)',
-        '  "keyVocabulary": [                // 5 to 8 items',
+        '  "keyVocabulary": [                // exactly 5 items',
         '    {',
         '      "word": string,               // Single English word or short phrase from the body',
         '      "phonetic": string,           // IPA in slashes, e.g. "/ˈsɛrənˌdɪpəti/"',
@@ -97,7 +103,7 @@ function buildPrompt(topic: string, difficulty: AiDifficulty): { system: string;
         '      "exampleSentence": string     // One short English example using the word',
         '    }',
         '  ],',
-        '  "quiz": [                         // 2 or 3 comprehension questions',
+        '  "quiz": [                         // exactly 2 comprehension questions',
         '    {',
         '      "question": string,           // English question about the article',
         '      "options": [string, string, string, string],  // Exactly 4 options, no A/B/C/D prefix',
@@ -244,7 +250,7 @@ export async function generateLearningArticle(
                     { role: 'user', content: user },
                 ],
                 temperature: 0.7,
-                max_tokens: 1800,
+                max_tokens: 1300,
                 response_format: { type: 'json_object' },
             }),
             signal: controller.signal,
@@ -317,7 +323,7 @@ export async function* generateLearningArticleStream(
                     { role: 'user', content: user },
                 ],
                 temperature: 0.7,
-                max_tokens: 1800,
+                max_tokens: 1300,
                 response_format: { type: 'json_object' },
                 stream: true,
             }),
