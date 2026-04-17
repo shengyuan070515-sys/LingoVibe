@@ -18,7 +18,7 @@ import { useWordBankStore, type WordBankItem } from '@/store/wordBankStore';
 import { useLearningAnalyticsStore } from '@/store/learningAnalyticsStore';
 import { computeLearningStreak, todayKey, toLocalDateKey } from '@/lib/learning-analytics';
 import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featured-api';
-import { useReadingLibraryStore } from '@/store/readingLibraryStore';
+import { useReadingLibraryStore, isInLibrary } from '@/store/readingLibraryStore';
 import { selectDueWords } from '@/lib/srs-utils';
 import { cn } from '@/lib/utils';
 import { speakEnglish } from '@/lib/speak-english';
@@ -134,9 +134,11 @@ export function DashboardPage() {
     }, []);
 
     const librarySpotlight = React.useMemo(() => {
-        if (!articles?.length) return null;
-        const i = new Date().getDate() % articles.length;
-        return articles[i]!;
+        /** 只从"我的书库"中挑选（不包含今日精选缓存等未入库的文章） */
+        const pool = articles.filter(isInLibrary);
+        if (!pool.length) return null;
+        const i = new Date().getDate() % pool.length;
+        return pool[i]!;
     }, [articles]);
 
     const readingCard = featured

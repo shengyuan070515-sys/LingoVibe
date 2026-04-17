@@ -1,14 +1,15 @@
 import * as React from 'react';
-import { BookOpen, Loader2, Search, Sparkles, Upload, Wand2 } from 'lucide-react';
+import { BookOpen, Loader2, Search, Sparkles, Trash2, Upload, Wand2 } from 'lucide-react';
 import { platformSearch, platformExtractMarkdown, type SearchHit } from '@/lib/reading-platform-api';
 import { fetchFeaturedDaily, type FeaturedBundleItem } from '@/lib/reading-featured-api';
-import { generateReadingArticle } from '@/lib/reading-generate-api';
+import { generateReadingArticle, GENERATE_EXPECTED_TOTAL_CHARS } from '@/lib/reading-generate-api';
 import { estimateReadingDifficulty } from '@/lib/reading-ai';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import {
     useReadingLibraryStore,
+    isInLibrary,
     type ReadingDifficulty,
 } from '@/store/readingLibraryStore';
 import { ReadingArticleView } from '@/pages/ReadingArticle';
@@ -70,6 +71,49 @@ function labelForSource(t: string): string {
     return '联网精选';
 }
 
+/**
+ * 自选主题生成时的进度展示：
+ *   - 进度条：服务端累计字符 / 预期字符数（3500 左右）
+ *   - 阶段文案：按进度区间给出拟人化提示，比"转圈圈"更有存在感
+ */
+function GenerationProgress({ progress }: { progress: number }) {
+    /**
+     * ratio 真实值（接近完成会超过 1，截断到 1）
+     */
+    const ratio = Math.min(1, progress / GENERATE_EXPECTED_TOTAL_CHARS);
+
+    /**
+     * 即使服务端尚未产出任何 chunk（ratio=0），也先把进度条顶到 3%，
+     * 避免用户看到一条完全没动的空条心里发慌。
+     */
+    const displayRatio = Math.max(0.03, ratio);
+
+    let stageLabel = '正在连接 AI…';
+    if (progress > 0 && ratio < 0.2) stageLabel = '正在构思文章结构…';
+    else if (ratio < 0.5) stageLabel = '正在撰写正文…';
+    else if (ratio < 0.75) stageLabel = '正在挑选重点词汇…';
+    else if (ratio < 0.95) stageLabel = '正在生成阅读理解题…';
+    else if (ratio >= 0.95) stageLabel = '即将完成，正在整理…';
+
+    return (
+        <div className="mt-3 rounded-lg border border-indigo-100 bg-white/90 p-3">
+            <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-slate-700">{stageLabel}</span>
+                <span className="tabular-nums text-slate-500">{Math.round(displayRatio * 100)}%</span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-[width] duration-200 ease-out"
+                    style={{ width: `${displayRatio * 100}%` }}
+                />
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                即使你切到别的模块，生成会继续进行；完成后文章会出现在下方「我最近生成的」，点文章顶部「加入书库」可长期保留。
+            </p>
+        </div>
+    );
+}
+
 export function DailyReadingPage() {
     const articles = useReadingLibraryStore((s) => s.articles);
     const addOrGetByUrl = useReadingLibraryStore((s) => s.addOrGetByUrl);
@@ -95,6 +139,8 @@ export function DailyReadingPage() {
     const [genTopic, setGenTopic] = React.useState('');
     const [genDifficulty, setGenDifficulty] = React.useState<ReadingDifficulty>(3);
     const [generating, setGenerating] = React.useState(false);
+    /** 服务端已经流回来的累计字符数（SSE progress 事件），用来驱动进度条 */
+    const [genProgress, setGenProgress] = React.useState(0);
 
     const [openId, setOpenId] = React.useState<string | null>(null);
     const [activeTab, setActiveTab] = React.useState<DailyTab>('featured');
@@ -152,6 +198,8 @@ export function DailyReadingPage() {
                 keyVocabulary: item.keyVocabulary,
                 quiz: item.quiz,
                 topic: item.topic,
+                addedToLibrary: false,
+                isUserGenerated: false,
             });
             setOpenId(id);
         } finally {
@@ -166,8 +214,13 @@ export function DailyReadingPage() {
             return;
         }
         setGenerating(true);
+        setGenProgress(0);
         try {
-            const res = await generateReadingArticle({ topic, difficulty: genDifficulty });
+            const res = await generateReadingArticle({
+                topic,
+                difficulty: genDifficulty,
+                onProgress: (total) => setGenProgress(total),
+            });
             const a = res.article;
             const id = addAiArticle({
                 title: a.title,
@@ -177,14 +230,17 @@ export function DailyReadingPage() {
                 keyVocabulary: a.keyVocabulary,
                 quiz: a.quiz,
                 topic,
+                addedToLibrary: false,
+                isUserGenerated: true,
             });
-            toast('已生成并保存到书库', 'success');
+            toast('已生成，可在文章页点「加入书库」保留', 'success');
             setOpenId(id);
             setGenTopic('');
         } catch (e) {
             toast(e instanceof Error ? e.message : '生成失败', 'error');
         } finally {
             setGenerating(false);
+            setGenProgress(0);
         }
     };
 
@@ -289,12 +345,20 @@ export function DailyReadingPage() {
         setOpenId(id);
     };
 
-    /** 最近 AI 生成的 5 篇文章（按生成时间倒序），用于自选主题 tab 的"最近生成"卡片列表 */
+    /**
+     * 最近「自选主题」生成的 5 篇文章（按生成时间倒序）。
+     * 只显示用户主动生成的，不包含今日精选点击阅读时缓存下来的 AI 文章。
+     */
     const recentAiArticles = React.useMemo(() => {
         return [...articles]
-            .filter((a) => a.sourceType === 'ai_generated')
+            .filter((a) => a.sourceType === 'ai_generated' && a.isUserGenerated === true)
             .sort((a, b) => b.fetchedAt - a.fetchedAt)
             .slice(0, 5);
+    }, [articles]);
+
+    /** 我的书库：只显示已被用户主动加入书库的文章 */
+    const libraryArticles = React.useMemo(() => {
+        return [...articles].filter(isInLibrary).sort((a, b) => b.fetchedAt - a.fetchedAt);
     }, [articles]);
 
     if (openId) {
@@ -471,7 +535,7 @@ export function DailyReadingPage() {
                                 {generating ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        正在写作（约 15-30 秒）…
+                                        生成中…
                                     </>
                                 ) : (
                                     <>
@@ -498,9 +562,7 @@ export function DailyReadingPage() {
                     </div>
 
                     {generating ? (
-                        <p className="mt-3 rounded-lg border border-indigo-100 bg-white/90 px-3 py-2 text-xs leading-relaxed text-slate-600">
-                            AI 正在创作中（约 15-30 秒）。生成完成后会自动保存到「我的书库」，也会出现在下方的「我最近生成的」列表里。即使切换到其他页面也不会丢失。
-                        </p>
+                        <GenerationProgress progress={genProgress} />
                     ) : null}
 
                     {recentAiArticles.length > 0 ? (
@@ -533,7 +595,7 @@ export function DailyReadingPage() {
                                         ) : a.topic ? (
                                             <p className="mt-1 text-xs text-slate-500">话题：{a.topic}</p>
                                         ) : null}
-                                        <div className="mt-2 flex items-center justify-between">
+                                        <div className="mt-2 flex items-center justify-between gap-2">
                                             <span className="text-[11px] text-slate-500">
                                                 {new Date(a.fetchedAt).toLocaleString('zh-CN', {
                                                     month: 'numeric',
@@ -541,16 +603,37 @@ export function DailyReadingPage() {
                                                     hour: '2-digit',
                                                     minute: '2-digit',
                                                 })}
+                                                {a.addedToLibrary ? (
+                                                    <span className="ml-2 inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-100">
+                                                        已在书库
+                                                    </span>
+                                                ) : null}
                                             </span>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-7 text-xs text-indigo-700 hover:bg-indigo-50"
-                                                onClick={() => setOpenId(a.id)}
-                                            >
-                                                继续阅读 →
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    aria-label="删除此文章"
+                                                    title="删除"
+                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                                    onClick={() => {
+                                                        if (window.confirm(`确认删除「${a.sourceTitle}」？该操作不可撤销。`)) {
+                                                            remove(a.id);
+                                                            toast('已删除', 'default');
+                                                        }
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 text-xs text-indigo-700 hover:bg-indigo-50"
+                                                    onClick={() => setOpenId(a.id)}
+                                                >
+                                                    继续阅读 →
+                                                </Button>
+                                            </div>
                                         </div>
                                     </li>
                                 ))}
@@ -636,10 +719,13 @@ export function DailyReadingPage() {
 
             {activeTab === 'library' ? (
                 <section className="rounded-2xl border border-slate-100 bg-white/70 p-4 shadow-sm">
-                    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <BookOpen className="h-4 w-4 text-teal-600" />
-                        我的书库 ({articles.length})
+                        我的书库 ({libraryArticles.length})
                     </h2>
+                    <p className="mb-3 text-xs leading-relaxed text-slate-500">
+                        只显示你主动加入的文章。今日精选、自选主题默认不入库，阅读时可在文章顶部点「加入书库」保留。
+                    </p>
 
                     <details className="mb-3">
                         <summary className="cursor-pointer text-xs text-slate-600 hover:text-slate-800">
@@ -675,13 +761,13 @@ export function DailyReadingPage() {
                         </div>
                     </details>
 
-                    {articles.length === 0 ? (
-                        <p className="text-sm text-slate-500">暂无文章，去「今日精选」或「自选主题」读一篇吧。</p>
+                    {libraryArticles.length === 0 ? (
+                        <p className="text-sm text-slate-500">
+                            暂无文章。在「今日精选」/「自选主题」阅读时点顶部「加入书库」可把喜欢的文章留在这里。
+                        </p>
                     ) : (
                         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            {[...articles]
-                                .sort((a, b) => b.fetchedAt - a.fetchedAt)
-                                .map((a) => {
+                            {libraryArticles.map((a) => {
                                     const preview = excerptFromArticle(a);
                                     return (
                                         <li

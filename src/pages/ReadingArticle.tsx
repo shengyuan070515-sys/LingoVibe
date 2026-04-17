@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, BookMarked, Languages, Loader2, Volume2, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookMarked, BookmarkCheck, BookmarkPlus, Languages, Loader2, Volume2, Sparkles } from 'lucide-react';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes, fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
@@ -88,6 +88,7 @@ export function ReadingArticleView({
 }) {
     const article = useReadingLibraryStore((s) => s.getById(articleId));
     const updateDifficulty = useReadingLibraryStore((s) => s.updateDifficulty);
+    const setAddedToLibrary = useReadingLibraryStore((s) => s.setAddedToLibrary);
     const addWord = useWordBankStore((s) => s.addWord);
     const { toast } = useToast();
     const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -396,6 +397,37 @@ export function ReadingArticleView({
                 <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800">
                     {DIFF_LABELS[article.difficulty] ?? article.difficulty}
                 </span>
+                <div className="ml-auto">
+                    {article.addedToLibrary === false ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1 border-teal-200 text-teal-800 hover:bg-teal-50"
+                            onClick={() => {
+                                setAddedToLibrary(article.id, true);
+                                toast('已加入我的书库', 'success');
+                            }}
+                        >
+                            <BookmarkPlus className="h-3.5 w-3.5" />
+                            加入书库
+                        </Button>
+                    ) : (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 gap-1 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                            onClick={() => {
+                                setAddedToLibrary(article.id, false);
+                                toast('已移出我的书库', 'default');
+                            }}
+                        >
+                            <BookmarkCheck className="h-3.5 w-3.5 text-teal-600" />
+                            已在书库
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <h1 className="text-xl font-semibold tracking-tight text-slate-800">{article.sourceTitle}</h1>

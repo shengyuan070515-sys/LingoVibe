@@ -276,3 +276,110 @@ export async function generateLearningArticle(
         throw new Error(`AI 文章解析失败: ${msg}`);
     }
 }
+
+export type StreamEvent =
+    | { type: 'chunk'; total: number }
+    | { type: 'done'; article: AiGeneratedArticle };
+
+/**
+ * 流式版本：向 DeepSeek 请求 stream=true，逐块 yield 已累积字符数，
+ * 最后 yield 解析出的完整文章。
+ *
+ * 用于「自选主题」即时生成，让前端可以展示真实进度条。
+ */
+export async function* generateLearningArticleStream(
+    topic: string,
+    difficulty: AiDifficulty,
+    apiKey: string,
+    options?: { timeoutMs?: number }
+): AsyncGenerator<StreamEvent, void, void> {
+    const cleanTopic = topic.trim().slice(0, 200);
+    if (!cleanTopic) throw new Error('EMPTY_TOPIC');
+
+    const { system, user } = buildPrompt(cleanTopic, difficulty);
+
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? 40_000;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let r: Response;
+    try {
+        r = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user', content: user },
+                ],
+                temperature: 0.7,
+                max_tokens: 1800,
+                response_format: { type: 'json_object' },
+                stream: true,
+            }),
+            signal: controller.signal,
+        });
+    } catch (e) {
+        clearTimeout(timer);
+        if (e instanceof Error && e.name === 'AbortError') {
+            throw new Error(`DeepSeek 请求超时 (${timeoutMs}ms)`);
+        }
+        throw e;
+    }
+
+    if (!r.ok || !r.body) {
+        clearTimeout(timer);
+        const t = r.ok ? '' : await r.text().catch(() => '');
+        throw new Error(`DeepSeek ${r.status}: ${t.slice(0, 300)}`);
+    }
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let sseBuf = '';
+    let accumulated = '';
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            sseBuf += decoder.decode(value, { stream: true });
+
+            let idx: number;
+            while ((idx = sseBuf.indexOf('\n')) >= 0) {
+                const line = sseBuf.slice(0, idx).trimEnd();
+                sseBuf = sseBuf.slice(idx + 1);
+                if (!line.startsWith('data:')) continue;
+                const payload = line.slice(5).trim();
+                if (!payload || payload === '[DONE]') continue;
+                try {
+                    const j = JSON.parse(payload) as {
+                        choices?: { delta?: { content?: string } }[];
+                    };
+                    const delta = j.choices?.[0]?.delta?.content;
+                    if (typeof delta === 'string' && delta.length > 0) {
+                        accumulated += delta;
+                        yield { type: 'chunk', total: accumulated.length };
+                    }
+                } catch {
+                    /** 忽略个别损坏的 SSE 帧 */
+                }
+            }
+        }
+    } finally {
+        clearTimeout(timer);
+    }
+
+    if (!accumulated) throw new Error('DeepSeek 返回内容为空');
+
+    try {
+        const article = parseArticleJson(accumulated, difficulty);
+        yield { type: 'done', article };
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(`AI 文章解析失败: ${msg}`);
+    }
+}

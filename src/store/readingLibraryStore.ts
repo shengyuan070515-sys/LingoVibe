@@ -39,6 +39,25 @@ export interface ReadingArticle {
     quiz?: ReadingQuizItem[];
     /** AI 生成文章专属：话题标签 */
     topic?: string;
+    /**
+     * 是否已被用户主动加入"我的书库"。
+     * - 今日精选点击阅读：false（仅作为阅读缓存，不计入书库）
+     * - 自选主题即时生成：false（同上，需用户手动加入）
+     * - 用户本地导入（.txt / 粘贴）：true（显式入库）
+     * - 外刊原文勾选入库：true（显式入库）
+     * 缺省视为 true（向后兼容，旧用户的历史文章默认留在书库）。
+     */
+    addedToLibrary?: boolean;
+    /**
+     * AI 生成文章：是否由用户在「自选主题」中生成。
+     * 用于「最近生成」卡片列表过滤，与今日精选缓存区分。
+     */
+    isUserGenerated?: boolean;
+}
+
+/** 判断一篇文章是否属于"我的书库"（缺省视为 true 以保持与旧数据兼容）。 */
+export function isInLibrary(a: ReadingArticle): boolean {
+    return a.addedToLibrary !== false;
 }
 
 export type AddOrGetByUrlResult =
@@ -54,6 +73,8 @@ interface ReadingLibraryState {
         difficulty: ReadingDifficulty;
         summaryOnly?: boolean;
         summaryText?: string;
+        /** 默认 true（联网勾选入库属于主动行为） */
+        addedToLibrary?: boolean;
     }) => AddOrGetByUrlResult;
     addUserImport: (input: {
         title: string;
@@ -68,8 +89,14 @@ interface ReadingLibraryState {
         keyVocabulary?: ReadingVocabItem[];
         quiz?: ReadingQuizItem[];
         topic?: string;
+        /** 默认 false（AI 生成/精选默认不入库，用户需要手动加） */
+        addedToLibrary?: boolean;
+        /** 用户主动生成为 true；今日精选缓存为 false */
+        isUserGenerated?: boolean;
     }) => string;
     updateDifficulty: (id: string, difficulty: ReadingDifficulty) => void;
+    /** 将指定文章标记为已/未加入"我的书库" */
+    setAddedToLibrary: (id: string, added: boolean) => void;
     remove: (id: string) => void;
     getById: (id: string) => ReadingArticle | undefined;
 }
@@ -109,6 +136,7 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     sourceType: 'web_curated',
                     summaryOnly: summaryOnly || undefined,
                     summaryText: input.summaryText?.trim() || undefined,
+                    addedToLibrary: input.addedToLibrary ?? true,
                 };
                 set((state) => ({ articles: [...state.articles, article] }));
                 return { ok: true, id, duplicate: false };
@@ -123,6 +151,7 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     fetchedAt: Date.now(),
                     difficulty: input.difficulty ?? 3,
                     sourceType: 'user_import',
+                    addedToLibrary: true,
                 };
                 set((state) => ({ articles: [...state.articles, article] }));
                 return id;
@@ -141,6 +170,8 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     keyVocabulary: input.keyVocabulary,
                     quiz: input.quiz,
                     topic: input.topic,
+                    addedToLibrary: input.addedToLibrary ?? false,
+                    isUserGenerated: input.isUserGenerated ?? false,
                 };
                 set((state) => ({ articles: [...state.articles, article] }));
                 return id;
@@ -148,6 +179,12 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
             updateDifficulty: (id, difficulty) =>
                 set((state) => ({
                     articles: state.articles.map((a) => (a.id === id ? { ...a, difficulty } : a)),
+                })),
+            setAddedToLibrary: (id, added) =>
+                set((state) => ({
+                    articles: state.articles.map((a) =>
+                        a.id === id ? { ...a, addedToLibrary: added } : a
+                    ),
                 })),
             remove: (id) =>
                 set((state) => ({
@@ -157,8 +194,22 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
         }),
         {
             name: 'lingovibe_reading_library',
-            version: 2,
-            migrate: (persisted) => persisted,
+            version: 3,
+            migrate: (persisted, fromVersion) => {
+                const state = persisted as { articles?: ReadingArticle[] } | undefined;
+                if (!state?.articles) return persisted;
+                if (fromVersion < 3) {
+                    /**
+                     * v2 → v3：历史文章全部默认标记为「已在书库」，避免升级后旧用户书库一下子变空。
+                     * 之后新增的今日精选 / AI 生成文章会按新规则走（addedToLibrary=false）。
+                     */
+                    state.articles = state.articles.map((a) => ({
+                        ...a,
+                        addedToLibrary: a.addedToLibrary ?? true,
+                    }));
+                }
+                return persisted;
+            },
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
                 articles: state.articles.slice(-50).map((a) => ({
