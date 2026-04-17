@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, BookMarked, BookmarkCheck, BookmarkPlus, Languages, Loader2, Volume2, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookMarked, BookmarkCheck, BookmarkPlus, Languages, Loader2, Square, Volume2, Sparkles } from 'lucide-react';
 import { useReadingBrowseComplete } from '@/hooks/use-reading-browse-complete';
 import { fetchEnglishToChineseTranslation } from '@/lib/ai-chat';
 import { fetchReadingGrammarNotes, fetchReadingWordCard, type ReadingWordCardData } from '@/lib/reading-ai';
@@ -24,7 +24,7 @@ import { useReadingLibraryStore, type ReadingArticle as RA } from '@/store/readi
 import { useWordBankStore } from '@/store/wordBankStore';
 import { recordReadingSession } from '@/store/learningAnalyticsStore';
 import { syncDailyLoopDate, useDailyLoopStore } from '@/store/dailyLoopStore';
-import { speakEnglish } from '@/lib/speak-english';
+import { useEnglishTts } from '@/hooks/use-english-tts';
 
 const DIFF_LABELS: Record<number, string> = {
     1: '入门',
@@ -133,6 +133,8 @@ export function ReadingArticleView({
     const { progressLabel } = useReadingBrowseComplete(scrollRef, displayBody, onBrowseComplete, {
         summaryMode,
     });
+
+    const articleTts = useEnglishTts(displayBody);
 
     const refreshBubbleFromSelection = React.useCallback(() => {
         const root = scrollRef.current;
@@ -498,12 +500,17 @@ export function ReadingArticleView({
                         <Button
                             type="button"
                             size="sm"
-                            variant="outline"
+                            variant={articleTts.isPlaying ? 'default' : 'outline'}
                             className="h-8 gap-1"
-                            onClick={() => void speakEnglish(displayBody)}
+                            onClick={articleTts.toggle}
+                            aria-label={articleTts.isPlaying ? '停止朗读' : '朗读全文'}
                         >
-                            <Volume2 className="h-3.5 w-3.5" />
-                            朗读全文
+                            {articleTts.isPlaying ? (
+                                <Square className="h-3.5 w-3.5" />
+                            ) : (
+                                <Volume2 className="h-3.5 w-3.5" />
+                            )}
+                            {articleTts.isPlaying ? '停止朗读' : '朗读全文'}
                         </Button>
                     </div>
 

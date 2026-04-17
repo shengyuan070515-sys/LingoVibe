@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, Plus, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWordBankStore } from '@/store/wordBankStore';
 import { useToast } from '@/components/ui/toast';
+import { speakEnglish, stopSpeakEnglish } from '@/lib/speak-english';
 import type { ReadingVocabItem } from '@/store/readingLibraryStore';
 
 interface ReadingVocabCardsProps {
@@ -17,15 +18,13 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
     const { toast } = useToast();
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
+    useEffect(() => () => stopSpeakEnglish(), []);
+
     if (!items || items.length === 0) return null;
 
     const speak = (text: string) => {
-        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-US';
-        u.rate = 0.9;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
+        stopSpeakEnglish();
+        void speakEnglish(text);
     };
 
     const isSaved = (word: string) =>

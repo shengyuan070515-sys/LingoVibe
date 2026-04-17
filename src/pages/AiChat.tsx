@@ -15,6 +15,7 @@ import {
     Sparkles,
     Menu,
     Volume2,
+    Square,
     Sparkle,
     Lightbulb,
     Bolt,
@@ -43,7 +44,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEnglishSpeechRecognition } from '@/hooks/use-english-speech-recognition';
-import { speakEnglish } from '@/lib/speak-english';
+import { speakEnglish, stopSpeakEnglish } from '@/lib/speak-english';
 
 /** 可按模式切换；后续可改为独立「场景」配置或路由参数 */
 export const CHAT_SCENARIO_BY_MODE: Record<
@@ -165,6 +166,25 @@ export function AiChatPage() {
     const [isCompletingWord, setIsCompletingWord] = React.useState(false);
     const [wordSaveBurstKey, setWordSaveBurstKey] = React.useState(0);
     const [sessionDrawerOpen, setSessionDrawerOpen] = React.useState(false);
+    const [speakingMsgIndex, setSpeakingMsgIndex] = React.useState<number | null>(null);
+
+    React.useEffect(() => () => stopSpeakEnglish(), []);
+
+    const handleToggleSpeak = React.useCallback(
+        (idx: number, text: string) => {
+            if (speakingMsgIndex === idx) {
+                stopSpeakEnglish();
+                setSpeakingMsgIndex(null);
+                return;
+            }
+            stopSpeakEnglish();
+            setSpeakingMsgIndex(idx);
+            void speakEnglish(text).finally(() =>
+                setSpeakingMsgIndex((curr) => (curr === idx ? null : curr)),
+            );
+        },
+        [speakingMsgIndex],
+    );
 
     const [displayName] = useLocalStorage('lingovibe_display_name', '');
     const userInitials = userInitialsFromName(displayName);
@@ -953,11 +973,16 @@ export function AiChatPage() {
                                                         <div className="mt-4 flex flex-wrap items-center gap-3">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => void speakEnglish(msg.content)}
+                                                                onClick={() => handleToggleSpeak(index, msg.content)}
                                                                 className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-stitch-primary transition-colors hover:bg-stitch-primary/5"
+                                                                aria-label={speakingMsgIndex === index ? '停止朗读' : '朗读'}
                                                             >
-                                                                <Volume2 className="h-4 w-4" />
-                                                                听
+                                                                {speakingMsgIndex === index ? (
+                                                                    <Square className="h-4 w-4" />
+                                                                ) : (
+                                                                    <Volume2 className="h-4 w-4" />
+                                                                )}
+                                                                {speakingMsgIndex === index ? '停止' : '听'}
                                                             </button>
                                                             <button
                                                                 type="button"
