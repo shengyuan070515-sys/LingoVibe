@@ -120,11 +120,10 @@ The bubble closes when the panel opens.
 | `api/_lib/reading-article-generate.ts` | Prompt + schema: produce 3–5 `keyPhrases`; graceful fallback |
 | `src/lib/reading-generate-api.ts` | Propagate `keyPhrases` through the API boundary |
 | `src/lib/reading-featured-api.ts` | Same propagation for featured endpoint |
-| `src/lib/reading-highlight.ts` *(new)* | `highlightBodyNodes(children, { phrases, keyWords, savedWords })` React transform + tests |
+| `src/lib/reading-highlight.ts` *(new)* | Pure text-segment planner: given `(text, phrases, keyWords, savedWords)` → array of `{ text, kind }` segments |
 | `src/lib/reading-highlight.test.ts` *(new)* | Precedence, boundary, case-insensitivity, overlap tests |
-| `src/pages/ReadingArticle.tsx` | Wire highlighter into `ReactMarkdown` output, add toolbar "显示已学词" toggle, mount `<SelectionInsightPanel>`, remove old `selZh`/`grammar` cards |
+| `src/pages/ReadingArticle.tsx` | Wire highlighter into `ReactMarkdown` text-node renderer, add toolbar "显示已学词" toggle, mount `<SelectionInsightPanel>`, remove old `selZh`/`grammar` cards |
 | `src/components/reading/selection-insight-panel.tsx` *(new)* | Panel component (floating + bottom sheet variants, tabs, lazy API, caching, dismissal) |
-| `src/components/reading/selection-insight-panel.test.tsx` *(new)* | Tab switch, caching, dismissal behavior tests |
 
 ## Out of scope (explicit YAGNI)
 
@@ -139,12 +138,22 @@ The bubble closes when the panel opens.
 
 ## Testing plan
 
-- **word-stats:** pure-function unit tests; table-driven.
-- **reading-highlight:** unit tests on the transform given varied inputs (empty, overlap, inside code span, case mismatch).
-- **selection-insight-panel:** component tests covering tab switch, lazy API firing, cache hit, ESC / outside-click / scroll dismissal.
-- **ReadingArticle.tsx:** integration test verifying that selecting text → clicking "翻译" opens the panel with the correct sentence header and that the old `selZh` card is no longer rendered.
-- **WordBank.tsx / WordDetailModal:** snapshot/regression check for the new badge and history section with both `< 3`, `≥ 3`, and `0` reviews fixtures.
-- Manual QA on desktop (floating) and narrow viewport (bottom sheet) for panel positioning.
+This project currently has no component-test infrastructure (`vitest` runs in `node`, tests are all `.test.ts` pure-logic). This design **does not** introduce component tests — that's separate infra work, out of scope. Coverage strategy:
+
+- **Pure-logic tests (`.test.ts`) — required:**
+  - `word-stats.test.ts`: table-driven tests for `computeWordAccuracy` covering `< 3` threshold, `learning` exclusion, empty log, wordId mismatch.
+  - `reading-highlight.test.ts`: table-driven tests for the segment planner covering precedence, word-boundary matching, case-insensitivity, longest-phrase-first, and overlapping phrase/word.
+- **TypeScript + eslint:** both `npm run lint` and `npm run build` (the latter runs `tsc`) must pass — acts as a contract check for all the wiring in `ReadingArticle.tsx`, `WordBank.tsx`, `WordDetailModal.tsx`, and `SelectionInsightPanel`.
+- **Manual QA checklist** (added to the plan):
+  - Word bank card shows `✓ N% · M次` after ≥ 3 reviews, `复习 M 次` below threshold, `未复习` at zero.
+  - WordDetailModal shows last 10 review entries ordered newest-first.
+  - Article body highlights phrases (yellow), keyVocab words (teal dashed), saved words (grey dashed) with correct precedence.
+  - Toggle "显示已学词" hides grey dashed layer only; state persists across reloads.
+  - Click on phrase → bubble; click on saved word → opens WordDetailModal directly.
+  - Selection insight panel: desktop floats near selection (flips when near bottom edge); mobile renders as bottom sheet.
+  - Panel tabs lazy-load (`翻译` fires translation only on first entry, same for `语法`); switching back hits cache.
+  - Panel dismisses on outside click, ESC, scroll > 80px.
+  - `fullZh` (翻译全文) remains functional and unchanged.
 
 ## Open questions
 
