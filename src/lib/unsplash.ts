@@ -11,19 +11,52 @@ export async function fetchUnsplashImages(query: string, options?: { perPage?: n
     const perPage = options?.perPage ?? 3;
 
     const apiKey = safeGetUnsplashApiKey();
-    if (!apiKey) return buildFallbackUrls(q, perPage);
+    if (!apiKey) {
+        console.warn('[unsplash] no access key found, using fallback pool', {
+            hasEnvKey: !!import.meta.env.VITE_UNSPLASH_ACCESS_KEY,
+        });
+        return buildFallbackUrls(q, perPage);
+    }
 
     try {
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${perPage}&client_id=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(url);
-        if (!res.ok) return buildFallbackUrls(q, perPage);
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${perPage}`;
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Client-ID ${apiKey}`,
+                'Accept-Version': 'v1',
+            },
+        });
+
+        if (!res.ok) {
+            const remaining = res.headers.get('X-Ratelimit-Remaining');
+            const limit = res.headers.get('X-Ratelimit-Limit');
+            let errorBody = '';
+            try {
+                errorBody = (await res.text()).slice(0, 200);
+            } catch {
+                /* ignore */
+            }
+            console.warn('[unsplash] API error → fallback', {
+                query: q,
+                status: res.status,
+                statusText: res.statusText,
+                rateLimit: `${remaining}/${limit}`,
+                body: errorBody,
+            });
+            return buildFallbackUrls(q, perPage);
+        }
 
         const data: any = await res.json().catch(() => null);
         const urls: string[] =
             data?.results?.map((r: any) => r?.urls?.regular).filter(Boolean) || [];
 
-        return urls.length > 0 ? urls : buildFallbackUrls(q, perPage);
-    } catch {
+        if (urls.length === 0) {
+            console.warn('[unsplash] empty results → fallback', { query: q, total: data?.total });
+            return buildFallbackUrls(q, perPage);
+        }
+        return urls;
+    } catch (e) {
+        console.warn('[unsplash] fetch threw → fallback', { query: q, error: e instanceof Error ? e.message : String(e) });
         return buildFallbackUrls(q, perPage);
     }
 }
