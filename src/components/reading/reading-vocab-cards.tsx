@@ -72,6 +72,22 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                             {item.pos && (
                                                 <span className="text-xs text-muted-foreground italic">{item.pos}</span>
                                             )}
+                                            {item.difficultyLabel && (
+                                                <span
+                                                    className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                                                    title="词典判定的学习难度档位"
+                                                >
+                                                    {item.difficultyLabel}
+                                                </span>
+                                            )}
+                                            {item.isProfessional && (
+                                                <span
+                                                    className="rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700"
+                                                    title="与文章主题相关的专业术语"
+                                                >
+                                                    专业
+                                                </span>
+                                            )}
                                         </div>
                                         {item.phonetic && (
                                             <div className="text-xs text-muted-foreground mt-0.5">{item.phonetic}</div>
@@ -103,8 +119,15 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                 <div className="text-sm text-foreground/90">{item.definitionZh}</div>
 
                                 {item.exampleSentence && (
-                                    <div className="text-xs text-muted-foreground italic border-l-2 border-primary/40 pl-2 mt-1">
-                                        {item.exampleSentence}
+                                    <div className="mt-1 border-l-2 border-primary/40 pl-2">
+                                        <div className="text-xs italic text-muted-foreground">
+                                            {item.exampleSentence}
+                                        </div>
+                                        {item.exampleZh && (
+                                            <div className="mt-0.5 text-xs text-muted-foreground/80">
+                                                {item.exampleZh}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </Card>

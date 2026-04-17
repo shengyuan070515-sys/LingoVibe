@@ -25,3 +25,10 @@ dist-ssr
 
 # Git worktrees (isolated feature branches — never commit worktree copies)
 .worktrees/
+
+# Dictionary import script local cache (large CSV download)
+scripts/_cache/
+
+
+.vercel
+.env*.local

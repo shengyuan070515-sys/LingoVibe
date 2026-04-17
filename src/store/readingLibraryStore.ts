@@ -11,6 +11,12 @@ export interface ReadingVocabItem {
     pos: string;
     definitionZh: string;
     exampleSentence: string;
+    /** 例句的中文翻译（v2 词典驱动后填入） */
+    exampleZh?: string;
+    /** 展示用难度标签，如 "CET6" / "B2" / "GRE"（v2 词典驱动后填入） */
+    difficultyLabel?: string;
+    /** 是否是专业术语（与文章主题相关时才会入选） */
+    isProfessional?: boolean;
 }
 
 export interface ReadingQuizItem {

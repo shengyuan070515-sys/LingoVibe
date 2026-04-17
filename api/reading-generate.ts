@@ -3,8 +3,11 @@ import { applyCors, isOriginAllowed } from './_lib/cors.js';
 import { consumeRateLimit, getClientIp } from './_lib/rate-limit.js';
 import { generateLearningArticle, type AiDifficulty } from './_lib/reading-article-generate.js';
 
-/** 单篇生成通常 8-20 秒，保险给 30 秒 */
-export const config = { maxDuration: 30 };
+/**
+ * 单篇生成通常 15-25 秒（v2 起有两遍：文章+例句），留 45 秒上限。
+ * 旧版单遍流程还在，仅作为词典未命中时的兜底。
+ */
+export const config = { maxDuration: 45 };
 
 /**
  * POST /api/reading-generate
@@ -67,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const article = await generateLearningArticle(topic, difficulty, deepseekKey, {
-            timeoutMs: 25_000,
+            timeoutMs: 40_000,
         });
         res.status(200).json({
             ok: true,
