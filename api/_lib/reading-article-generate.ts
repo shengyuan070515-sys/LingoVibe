@@ -47,6 +47,8 @@ export interface AiGeneratedArticle {
     difficulty: AiDifficulty;
     summary: string;
     keyVocabulary: AiVocabItem[];
+    /** 3–5 固定短语/搭配，正文中逐字出现。可能为空数组（降级时）。 */
+    keyPhrases: string[];
     quiz: AiQuizItem[];
 }
 
@@ -103,6 +105,7 @@ interface ArticleCore {
     body: string;
     summary: string;
     quiz: AiQuizItem[];
+    keyPhrases: string[];
 }
 
 function buildCorePrompt(topic: string, difficulty: AiDifficulty): { system: string; user: string } {
@@ -118,6 +121,7 @@ function buildCorePrompt(topic: string, difficulty: AiDifficulty): { system: str
         '  "body": string,                   // English article body in Markdown. Use paragraphs. No headings beyond ## if needed.',
         '  "difficulty": number,             // Echo the requested difficulty (1-5)',
         '  "summary": string,                // One-sentence Chinese summary (不超过 40 字)',
+        '  "keyPhrases": [string],           // 3-5 fixed phrases/collocations that appear verbatim in the body (preserve original casing)',
         '  "quiz": [                         // exactly 2 comprehension questions',
         '    {',
         '      "question": string,           // English question about the article',
@@ -133,6 +137,8 @@ function buildCorePrompt(topic: string, difficulty: AiDifficulty): { system: str
         '- Do not include the title inside the body.',
         '- Do not include A/B/C/D letter prefixes inside options strings.',
         '- DO NOT include any vocabulary list. Key vocabulary is selected separately by a dictionary pipeline.',
+        '- Produce 3-5 keyPhrases. Each MUST appear verbatim (same casing) somewhere in the body.',
+        '- keyPhrases should be multi-word collocations (2-5 words each), NOT single words. Example: "climate change", "make up for", "on the verge of".',
     ].join('\n');
 
     const user = [
@@ -180,7 +186,14 @@ function parseCoreJson(raw: string): ArticleCore {
         })
         .filter((q) => q.question && q.options.length === 4);
 
-    return { title, body, summary, quiz };
+    const phrasesRaw = Array.isArray(obj.keyPhrases) ? obj.keyPhrases : [];
+    const keyPhrases = phrasesRaw
+        .map((p) => asString(p))
+        .filter((p) => p.length > 0 && p.length <= 80)
+        .filter((p) => body.toLowerCase().includes(p.toLowerCase()))
+        .slice(0, 5);
+
+    return { title, body, summary, quiz, keyPhrases };
 }
 
 /* ========================================================================= */
@@ -268,6 +281,7 @@ function buildLegacyPrompt(topic: string, difficulty: AiDifficulty): { system: s
         '  "body": string,',
         '  "difficulty": number,',
         '  "summary": string,',
+        '  "keyPhrases": [string],',
         '  "keyVocabulary": [',
         '    { "word": string, "phonetic": string, "pos": string, "definitionZh": string, "exampleSentence": string, "exampleZh": string }',
         '  ],',
@@ -278,6 +292,8 @@ function buildLegacyPrompt(topic: string, difficulty: AiDifficulty): { system: s
         '',
         'Rules:',
         '- Produce exactly 5 keyVocabulary items; every word MUST appear verbatim in the body.',
+        '- Produce 3-5 keyPhrases. Each MUST appear verbatim (same casing) somewhere in the body.',
+        '- keyPhrases should be multi-word collocations (2-5 words each), NOT single words. Example: "climate change", "make up for", "on the verge of".',
         '- Produce exactly 2 quiz items.',
         '- Do not include A/B/C/D letter prefixes inside options strings.',
         '- Keep the body self-contained; no links or images.',
@@ -352,7 +368,14 @@ function parseLegacyJson(raw: string, difficulty: AiDifficulty): AiGeneratedArti
         })
         .filter((q) => q.question && q.options.length === 4);
 
-    return { title, body, difficulty, summary, keyVocabulary, quiz };
+    const phrasesRaw = Array.isArray(obj.keyPhrases) ? obj.keyPhrases : [];
+    const keyPhrases = phrasesRaw
+        .map((p) => asString(p))
+        .filter((p) => p.length > 0 && p.length <= 80)
+        .filter((p) => body.toLowerCase().includes(p.toLowerCase()))
+        .slice(0, 5);
+
+    return { title, body, difficulty, summary, keyVocabulary, keyPhrases, quiz };
 }
 
 /* ========================================================================= */
@@ -537,6 +560,7 @@ async function generateViaDict(
         difficulty,
         summary: core.summary,
         keyVocabulary,
+        keyPhrases: core.keyPhrases,
         quiz: core.quiz,
     };
 }
