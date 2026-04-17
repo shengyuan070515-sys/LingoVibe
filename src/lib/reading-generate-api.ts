@@ -13,6 +13,8 @@ export type GeneratedArticle = {
     difficulty: ReadingDifficulty;
     summary: string;
     keyVocabulary: ReadingVocabItem[];
+    /** 3–5 固定搭配；老响应没有此字段 → 默认空数组 */
+    keyPhrases?: string[];
     quiz: ReadingQuizItem[];
 };
 

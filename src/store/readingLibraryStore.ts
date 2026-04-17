@@ -41,6 +41,8 @@ export interface ReadingArticle {
     summary?: string;
     /** AI 生成文章专属：重点词汇（5-8 个） */
     keyVocabulary?: ReadingVocabItem[];
+    /** AI 生成文章专属：重点短语（3–5 个）。老文章可能没有此字段。 */
+    keyPhrases?: string[];
     /** AI 生成文章专属：随文测验（2-3 题） */
     quiz?: ReadingQuizItem[];
     /** AI 生成文章专属：话题标签 */
@@ -93,6 +95,7 @@ interface ReadingLibraryState {
         difficulty: ReadingDifficulty;
         summary?: string;
         keyVocabulary?: ReadingVocabItem[];
+        keyPhrases?: string[];
         quiz?: ReadingQuizItem[];
         topic?: string;
         /** 默认 false（AI 生成/精选默认不入库，用户需要手动加） */
@@ -174,6 +177,7 @@ export const useReadingLibraryStore = create<ReadingLibraryState>()(
                     sourceType: 'ai_generated',
                     summary: input.summary,
                     keyVocabulary: input.keyVocabulary,
+                    keyPhrases: input.keyPhrases,
                     quiz: input.quiz,
                     topic: input.topic,
                     addedToLibrary: input.addedToLibrary ?? false,

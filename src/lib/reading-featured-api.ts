@@ -9,6 +9,7 @@ export type FeaturedBundleItem = {
     difficulty: 1 | 2 | 3 | 4 | 5;
     summary: string;
     keyVocabulary: ReadingVocabItem[];
+    keyPhrases?: string[];
     quiz: ReadingQuizItem[];
     topic: string;
     source: 'hot' | 'pool';
