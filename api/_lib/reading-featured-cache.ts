@@ -46,7 +46,22 @@ export async function ensureFeaturedForDate(dateKey: string): Promise<FeaturedBu
 
     const tavilyKey = process.env.TAVILY_API_KEY?.trim() || undefined;
 
-    const bundle = await generateFeaturedBundle(dateKey, deepseekKey, tavilyKey);
+    /**
+     * 部分写入：每完成一篇就落 KV 一次。
+     * 即使 Vercel 在 60 秒后 kill 函数，已完成的文章也能被下一次请求读到，
+     * 避免「用户每次点进来都重新跑 30 秒」的无限循环。
+     */
+    const onProgress = async (partial: FeaturedBundle) => {
+        if (partial.items.length > 0) {
+            try {
+                await saveFeaturedBundle(partial);
+            } catch {
+                /* KV 写入失败时忽略 */
+            }
+        }
+    };
+
+    const bundle = await generateFeaturedBundle(dateKey, deepseekKey, tavilyKey, onProgress);
     if (bundle.items.length === 0) {
         throw new Error('GENERATION_FAILED');
     }

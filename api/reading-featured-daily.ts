@@ -1,7 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { currentDateKeyShanghai, ensureFeaturedForDate } from './_lib/reading-featured-cache.js';
+import {
+    currentDateKeyShanghai,
+    ensureFeaturedForDate,
+    loadFeaturedBundle,
+} from './_lib/reading-featured-cache.js';
 import { applyCors, isOriginAllowed } from './_lib/cors.js';
 import { consumeRateLimit, getClientIp } from './_lib/rate-limit.js';
+
+/** Vercel: 延长到 60 秒以便首次生成（8 篇文章并行 ~20-30 秒） */
+export const config = { maxDuration: 60 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const origin = req.headers.origin as string | undefined;
@@ -35,6 +42,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : currentDateKeyShanghai();
 
     try {
+        try {
+            const cached = await loadFeaturedBundle(dateKey);
+            if (cached && Array.isArray(cached.items) && cached.items.length > 0) {
+                res.status(200).json(cached);
+                return;
+            }
+        } catch {
+            /* 缓存读失败时退化为生成路径 */
+        }
+
         const bundle = await ensureFeaturedForDate(dateKey);
         res.status(200).json(bundle);
     } catch (e) {

@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { currentDateKeyShanghai, ensureFeaturedForDate } from './_lib/reading-featured-cache.js';
 
+/** Vercel: 延长到 60 秒以容纳 8 篇文章并行生成 */
+export const config = { maxDuration: 60 };
+
 /**
  * Vercel Cron 使用 GET；也可 POST 手动触发。
  * Authorization: Bearer <CRON_SECRET>

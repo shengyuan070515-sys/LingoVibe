@@ -3,6 +3,9 @@ import { applyCors, isOriginAllowed } from './_lib/cors.js';
 import { consumeRateLimit, getClientIp } from './_lib/rate-limit.js';
 import { generateLearningArticle, type AiDifficulty } from './_lib/reading-article-generate.js';
 
+/** 单篇生成通常 15-30 秒，保险起见给 45 秒 */
+export const config = { maxDuration: 45 };
+
 /**
  * POST /api/reading-generate
  * body: { topic: string; difficulty?: 1..5 }

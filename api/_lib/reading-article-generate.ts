@@ -205,37 +205,58 @@ function parseArticleJson(raw: string, difficulty: AiDifficulty): AiGeneratedArt
 
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 
+/** 单个 DeepSeek 请求的硬超时（毫秒）。避免个别慢请求拖垮精选生成 */
+const DEEPSEEK_TIMEOUT_MS = 28_000;
+
 /**
  * 核心入口：给定话题和难度，返回一篇完整的学习文章。
  * 抛出异常时由调用方决定是否重试 / 回退。
+ *
+ * @param options.timeoutMs 单请求超时，默认 28 秒
  */
 export async function generateLearningArticle(
     topic: string,
     difficulty: AiDifficulty,
-    apiKey: string
+    apiKey: string,
+    options?: { timeoutMs?: number }
 ): Promise<AiGeneratedArticle> {
     const cleanTopic = topic.trim().slice(0, 200);
     if (!cleanTopic) throw new Error('EMPTY_TOPIC');
 
     const { system, user } = buildPrompt(cleanTopic, difficulty);
 
-    const r = await fetch(DEEPSEEK_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-                { role: 'system', content: system },
-                { role: 'user', content: user },
-            ],
-            temperature: 0.7,
-            max_tokens: 2400,
-            response_format: { type: 'json_object' },
-        }),
-    });
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? DEEPSEEK_TIMEOUT_MS;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let r: Response;
+    try {
+        r = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user', content: user },
+                ],
+                temperature: 0.7,
+                max_tokens: 1800,
+                response_format: { type: 'json_object' },
+            }),
+            signal: controller.signal,
+        });
+    } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') {
+            throw new Error(`DeepSeek 请求超时 (${timeoutMs}ms)`);
+        }
+        throw e;
+    } finally {
+        clearTimeout(timer);
+    }
 
     if (!r.ok) {
         const t = await r.text();
