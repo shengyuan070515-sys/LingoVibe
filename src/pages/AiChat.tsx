@@ -18,7 +18,7 @@ import {
     Square,
     Sparkle,
     Lightbulb,
-    Bolt,
+    Zap,
     Image as ImageIcon,
 } from 'lucide-react';
 import { WordCollectParticleBurst } from '@/components/ui/favorite-burst-button';
@@ -53,19 +53,19 @@ export const CHAT_SCENARIO_BY_MODE: Record<
 > = {
     vocabulary: {
         scenario: '学习工坊',
-        focusLine: 'Speaking focus',
+        focusLine: '口语专注',
         focusSub: '生词运用 · Active vocabulary',
         Icon: BookOpen,
     },
     casual: {
         scenario: '咖啡馆',
-        focusLine: 'Speaking focus',
+        focusLine: '口语专注',
         focusSub: '礼貌点餐 · Polite ordering',
         Icon: Coffee,
     },
     surprise: {
         scenario: '自由谈天',
-        focusLine: 'Speaking focus',
+        focusLine: '口语专注',
         focusSub: '自然应答 · Spontaneous replies',
         Icon: Sparkles,
     },
@@ -149,13 +149,12 @@ export function AiChatPage() {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
     const [isOpening, setIsOpening] = React.useState(false);
     const openingRunRef = React.useRef(0);
-    
-    // 1. 添加必需的状态
-    const [selectionBox, setSelectionBox] = React.useState({ 
-        show: false, 
-        text: '', 
-        context: '', 
-        x: 0, 
+
+    const [selectionBox, setSelectionBox] = React.useState({
+        show: false,
+        text: '',
+        context: '',
+        x: 0,
         y: 0,
         translation: '',
         isLoading: false
@@ -334,7 +333,6 @@ export function AiChatPage() {
         scrollToBottom();
     }, [currentSession?.messages, isLoading, isOpening]);
 
-    // 4. 完善消失逻辑（鼠标 + 触摸，避免手机划词后点空白关不掉）
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent | TouchEvent) => {
             const target = event.target as HTMLElement;
@@ -353,15 +351,16 @@ export function AiChatPage() {
     const handleSend = async () => {
         if (!input.trim() || !currentSessionId) return;
 
+        const originalMessages = currentSession?.messages ?? [];
         const userMessage: Message = { role: 'user', content: input };
-        const messagesForApi = [...(currentSession?.messages || []), userMessage];
+        const messagesForApi = [...originalMessages, userMessage];
 
         let newTitle = currentSession?.title ?? 'New Chat';
         if (currentSession?.title === 'New Chat') {
             newTitle = input.substring(0, 15) + (input.length > 15 ? '...' : '');
         }
-        
-        const updatedSession = { 
+
+        const updatedSession = {
             ...currentSession!,
             messages: messagesForApi,
             title: newTitle,
@@ -390,7 +389,7 @@ export function AiChatPage() {
             );
 
             const assistantMessage = { role: 'assistant' as const, correction, content, translation, showTranslation: false };
-            
+
             setPersisted((p) => {
                 const mode = p.chatMode;
                 const sid = p.currentSessionIdByMode[mode];
@@ -409,7 +408,20 @@ export function AiChatPage() {
             markChatRoundDone();
 
         } catch (error) {
-            console.error(error);
+            // rollback 乐观插入的用户消息
+            setPersisted((p) => {
+                const mode = p.chatMode;
+                const sid = p.currentSessionIdByMode[mode];
+                return {
+                    ...p,
+                    sessionsByMode: {
+                        ...p.sessionsByMode,
+                        [mode]: p.sessionsByMode[mode].map((s) =>
+                            s.id === sid ? { ...s, messages: originalMessages } : s
+                        ),
+                    },
+                };
+            });
             const msg = error instanceof Error ? error.message : '连接失败，请稍后重试';
             toast(msg, 'error');
         } finally {
@@ -421,21 +433,18 @@ export function AiChatPage() {
         if (!currentSession || !currentSessionId) return;
         const targetMessage = currentSession.messages[messageIndex];
         if (!targetMessage) return;
-        /** 异步完成后用内容定位消息，避免 localStorage 同步导致下标错位把翻译贴到别的气泡上 */
         const targetFingerprint = { role: targetMessage.role, content: targetMessage.content };
-        
-        // 如果已经显示翻译，则直接切换隐藏
+
         if (targetMessage.showTranslation) {
-            const updatedMessages = currentSession.messages.map((msg, i) => 
+            const updatedMessages = currentSession.messages.map((msg, i) =>
                 i === messageIndex ? { ...msg, showTranslation: false } : msg
             );
             updateSession(currentSessionId, { messages: updatedMessages });
             return;
         }
 
-        // 如果还没有翻译，且不是正在翻译中
         if (!targetMessage.translation && !targetMessage.isTranslating) {
-            const translatingMessages = currentSession.messages.map((msg, i) => 
+            const translatingMessages = currentSession.messages.map((msg, i) =>
                 i === messageIndex ? { ...msg, isTranslating: true, showTranslation: true } : msg
             );
             updateSession(currentSessionId, { messages: translatingMessages });
@@ -482,28 +491,24 @@ export function AiChatPage() {
                 });
             }
         } else {
-            // 已有翻译，直接显示
-            const updatedMessages = currentSession.messages.map((msg, i) => 
+            const updatedMessages = currentSession.messages.map((msg, i) =>
                 i === messageIndex ? { ...msg, showTranslation: true } : msg
             );
             updateSession(currentSessionId, { messages: updatedMessages });
         }
     };
 
-
-
-    // AI 自动补全单词信息（走后端代理，无需前端 key）
     const completeWordInfo = async (word: string, context: string) => {
         try {
             const data = await callAiProxy({
                 messages: [
-                    { 
-                        role: 'system', 
-                        content: '你是一个专业的英语单词本助手。请为用户提供的单词进行补全。你必须严格返回 JSON 格式，不要包含任何 markdown 代码块标识。' 
+                    {
+                        role: 'system',
+                        content: '你是一个专业的英语单词本助手。请为用户提供的单词进行补全。你必须严格返回 JSON 格式，不要包含任何 markdown 代码块标识。'
                     },
-                    { 
-                        role: 'user', 
-                        content: `单词: "${word}"\n上下文: "${context}"\n请提供该词在此语境下的中文翻译、词性、该词的国际音标 (phonetic，例如 /dɪˈskʌsɪŋ/) 以及一个简单的英文例句。格式：{"translation": "...", "pos": "...", "phonetic": "...", "example": "..."}` 
+                    {
+                        role: 'user',
+                        content: `单词: "${word}"\n上下文: "${context}"\n请提供该词在此语境下的中文翻译、词性、该词的国际音标 (phonetic，例如 /dɪˈskʌsɪŋ/) 以及一个简单的英文例句。格式：{"translation": "...", "pos": "...", "phonetic": "...", "example": "..."}`
                     }
                 ],
                 response_format: { type: 'json_object' }
@@ -521,9 +526,9 @@ export function AiChatPage() {
         try {
             const data = await callAiProxy({
                 messages: [
-                    { 
-                        role: 'system', 
-                        content: 'You are a professional translator. Translate the given English phrase briefly and accurately into Chinese based on its context. Return ONLY the translation text.' 
+                    {
+                        role: 'system',
+                        content: 'You are a professional translator. Translate the given English phrase briefly and accurately into Chinese based on its context. Return ONLY the translation text.'
                     },
                     { role: 'user', content: `Phrase: "${text}"\nContext: "${context}"` }
                 ],
@@ -538,7 +543,6 @@ export function AiChatPage() {
         }
     }, []);
 
-    /** 桌面 mouseup / 移动 touchend 后 selection 才稳定，需延迟读取 */
     const openSelectionPopupIfAny = React.useCallback(() => {
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
@@ -613,7 +617,6 @@ export function AiChatPage() {
         };
     }, [openSelectionPopupIfAny]);
 
-    // 4. 完善保存逻辑
     const handleSaveSelection = async () => {
         let { text, context } = selectionBox;
         text = text.trim();
@@ -624,19 +627,18 @@ export function AiChatPage() {
             toast('请先选中有效的英文单词或短语', 'error');
             return;
         }
-        // 立即清除划词状态
         window.getSelection()?.removeAllRanges();
         setSelectionBox(prev => ({ ...prev, show: false, text: '', context: '', x: 0, y: 0, translation: '' }));
-        
+
         setIsCompletingWord(true);
         toast("Emma 正在为你智能补全单词卡片...", "default");
-        
+
         const aiInfo = await completeWordInfo(text, context);
 
         await addWord({
             word: text,
             type: text.split(/\s+/).length <= 3 ? 'word' : 'sentence',
-            context: context.substring(0, 200), // 截取避免过长
+            context: context.substring(0, 200),
             translation: aiInfo?.translation || '',
             phonetic: aiInfo?.phonetic || '',
             pos: aiInfo?.pos || 'unknown',
@@ -653,6 +655,10 @@ export function AiChatPage() {
     const totalInteractions = lifetime.chatMessages + lifetime.srsReviews + lifetime.readingSessions + lifetime.visualLookups;
     const insightFlow = totalInteractions > 0 ? Math.min(99, Math.round((lifetime.chatMessages / totalInteractions) * 100)) : 0;
 
+    const tipText = scene.focusSub.includes('点餐')
+        ? "在餐厅场景里，用 I'll have… 比直说 I want… 更地道。"
+        : '保持句子简短、先听懂再回答，对话会更顺畅。';
+
     return (
         <>
             {/* 划词浮层：玻璃拟态 */}
@@ -665,12 +671,12 @@ export function AiChatPage() {
                     <div className="min-w-[140px] max-w-[260px] overflow-hidden rounded-2xl border border-white/70 bg-white/85 shadow-2xl shadow-slate-900/15 backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.12] dark:bg-slate-900/75 dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.06)_inset] dark:backdrop-blur-2xl dark:backdrop-saturate-150">
                         <div className="p-3.5 space-y-2.5">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">Selected</span>
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">已选</span>
                                 <p className="text-xs font-semibold italic leading-snug text-slate-800 dark:text-slate-100">"{selectionBox.text}"</p>
                             </div>
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-white/10" />
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-indigo-500 dark:text-indigo-400">Translation</span>
+                                <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">翻译</span>
                                 {selectionBox.isLoading ? (
                                     <div className="flex items-center gap-2 py-1">
                                         <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
@@ -707,28 +713,14 @@ export function AiChatPage() {
             )}
 
             <div className="relative flex h-[calc(100dvh-5.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface shadow-stitch-card md:h-[calc(100vh-8rem)] md:rounded-3xl">
+                {/* 顶部模式切换 — segmented control */}
                 <div className="relative z-10 shrink-0 border-b border-stitch-outline/10 bg-stitch-surface-container-low/90 px-2 py-2 sm:px-4 sm:py-3 md:px-6">
-                    <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-stitch-outline/10 bg-stitch-surface-container-highest/40 p-1 md:flex md:w-auto md:flex-row md:flex-wrap">
+                    <div className="flex h-9 max-w-md rounded-full bg-slate-100 p-0.5 dark:bg-slate-800">
                         {(
                             [
-                                {
-                                    id: 'vocabulary' as const,
-                                    label: '生词破冰',
-                                    sub: 'Vocabulary Focus',
-                                    icon: BookOpen,
-                                },
-                                {
-                                    id: 'casual' as const,
-                                    label: '日常陪伴',
-                                    sub: 'Casual Catch-up',
-                                    icon: Coffee,
-                                },
-                                {
-                                    id: 'surprise' as const,
-                                    label: '顺其自然',
-                                    sub: 'Surprise Me',
-                                    icon: Sparkles,
-                                },
+                                { id: 'vocabulary' as const, label: '生词破冰', icon: BookOpen },
+                                { id: 'casual' as const, label: '日常陪伴', icon: Coffee },
+                                { id: 'surprise' as const, label: '顺其自然', icon: Sparkles },
                             ] as const
                         ).map((tab) => {
                             const Icon = tab.icon;
@@ -739,38 +731,19 @@ export function AiChatPage() {
                                     type="button"
                                     onClick={() => setChatMode(tab.id)}
                                     className={cn(
-                                        'flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-center transition-all duration-200 sm:flex-row sm:gap-2 sm:rounded-xl sm:px-3 sm:text-left md:min-w-[148px]',
+                                        'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-xs transition-all duration-200',
                                         active
-                                            ? 'bg-white text-stitch-on-surface shadow-sm ring-1 ring-stitch-outline/15'
-                                            : 'text-stitch-on-surface-variant hover:bg-white/60 hover:text-stitch-on-surface'
+                                            ? 'bg-white font-medium text-indigo-700 shadow-sm dark:bg-slate-700 dark:text-indigo-300'
+                                            : 'font-normal text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                                     )}
                                 >
-                                    <span
-                                        className={cn(
-                                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
-                                            active
-                                                ? 'bg-stitch-primary/10 text-stitch-primary'
-                                                : 'bg-stitch-surface-container-high/80 text-stitch-on-surface-variant'
-                                        )}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                    </span>
-                                    <span className="flex flex-col leading-tight">
-                                        <span
-                                            className={cn(
-                                                'text-xs font-bold tracking-tight',
-                                                active ? 'text-stitch-on-surface' : 'text-stitch-on-surface-variant'
-                                            )}
-                                        >
-                                            {tab.label}
-                                        </span>
-                                        <span className="hidden text-[10px] font-medium text-stitch-on-surface-variant sm:block">{tab.sub}</span>
-                                    </span>
+                                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                                    {tab.label}
                                 </button>
                             );
                         })}
                     </div>
-                    <p className="mt-2 line-clamp-2 max-w-3xl text-[10px] font-medium leading-relaxed text-stitch-on-surface-variant sm:mt-2.5 sm:line-clamp-none sm:text-[11px]">
+                    <p className="mt-2 line-clamp-2 max-w-3xl text-xs leading-relaxed text-slate-400 dark:text-slate-500 sm:mt-2.5 sm:line-clamp-none">
                         {
                             (
                                 [
@@ -792,18 +765,18 @@ export function AiChatPage() {
                         onClick={() => setSessionDrawerOpen(false)}
                     />
                 )}
-                {/* 左侧会话坞：移动端抽屉，桌面固定侧栏 */}
+                {/* 左侧会话坞 */}
                 <div
                     className={cn(
                         'flex min-h-0 flex-col border-white/50 bg-slate-950/[0.04] backdrop-blur-md dark:border-white/[0.06] dark:bg-slate-950/50 dark:backdrop-blur-xl dark:backdrop-saturate-125',
-                        'fixed inset-y-0 left-0 z-[60] h-full w-[min(20rem,90vw)] border-r md:static md:z-auto md:flex md:h-auto md:w-[26%] md:min-w-[200px] md:max-w-[320px]',
+                        'fixed inset-y-0 left-0 z-[60] h-full w-[min(20rem,90vw)] border-r md:static md:z-auto md:flex md:h-auto md:w-[22%] md:min-w-[200px] md:max-w-[280px]',
                         sessionDrawerOpen ? 'flex' : 'hidden md:flex'
                     )}
                 >
                     <div className="border-b border-white/40 p-3 dark:border-white/[0.06]">
                         <Button
                             onClick={handleNewChat}
-                            className="h-11 w-full gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-indigo-500/35"
+                            className="h-11 w-full gap-2 rounded-xl bg-indigo-600 font-semibold text-white shadow-sm transition hover:bg-indigo-700"
                         >
                             <Plus className="h-4 w-4" />
                             发起新对话
@@ -812,13 +785,13 @@ export function AiChatPage() {
                     <div className="flex-1 space-y-1 overflow-y-auto p-2.5">
                         {[...sessions].sort((a, b) => b.updatedAt - a.updatedAt).map(session => (
                             <div key={session.id} className="group relative">
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => selectSession(session.id)}
                                     className={cn(
                                         "flex w-full flex-col items-start rounded-xl p-3 text-left transition-all duration-200",
                                         currentSessionId === session.id
-                                            ? "bg-white/90 shadow-md shadow-slate-900/8 ring-1 ring-indigo-200/60 dark:bg-slate-800/70 dark:shadow-[0_6px_24px_-4px_rgba(0,0,0,0.55)] dark:ring-indigo-400/25"
+                                            ? "bg-white/90 shadow-sm ring-1 ring-indigo-200/60 dark:bg-slate-800/70 dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.35)] dark:ring-indigo-400/25"
                                             : "hover:bg-white/60 dark:hover:bg-white/[0.05]"
                                     )}
                                 >
@@ -847,12 +820,13 @@ export function AiChatPage() {
                 </div>
 
                 {currentSession ? (
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                         <div
                             className="relative flex min-h-0 min-w-0 flex-1 flex-col"
                             onMouseUp={handleTextSelectGestureEnd}
                             onTouchEnd={handleTextSelectGestureEnd}
                         >
+                            {/* 对话头部 */}
                             <header className="flex h-auto min-h-[4.5rem] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-stitch-outline/10 bg-stitch-surface-container-low px-4 py-3 sm:px-8 sm:py-4">
                                 <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
                                     <Button
@@ -865,41 +839,55 @@ export function AiChatPage() {
                                         <Menu className="h-4 w-4" />
                                         对话
                                     </Button>
-                                    <div className="rounded-xl border border-stitch-outline/10 bg-white p-2.5 shadow-sm">
+                                    <div className="rounded-xl border border-stitch-outline/10 bg-white p-2.5 shadow-sm dark:bg-slate-800">
                                         <SceneIcon className="h-5 w-5 text-stitch-primary" strokeWidth={2} />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-stitch-on-surface-variant/60">
-                                            Current Scenario
+                                        <p className="mb-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                            当前场景
                                         </p>
                                         <h2 className="font-headline text-base font-bold leading-none text-stitch-on-surface sm:text-lg">
                                             {scene.scenario}
                                         </h2>
+                                        {/* 极简状态条 */}
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                            <span className="flex items-center gap-1">
+                                                <BookOpen className="h-3.5 w-3.5" />
+                                                {scene.focusSub.split(' · ')[0]}
+                                            </span>
+                                            <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+                                            <span className="flex items-center gap-1.5">
+                                                <Zap className="h-3.5 w-3.5" />
+                                                流畅度
+                                                <span className="inline-block h-1.5 w-14 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                                                    <span className="block h-full rounded-full bg-indigo-500" style={{ width: `${insightFlow}%` }} />
+                                                </span>
+                                                {insightFlow}%
+                                            </span>
+                                            <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+                                            <span className="flex items-center gap-1">
+                                                <BookOpen className="h-3.5 w-3.5" />词&nbsp;{wordCount}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <MessageSquare className="h-3.5 w-3.5" />聊&nbsp;{lifetime.chatMessages}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                                    <div className="flex flex-col items-end text-right">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-stitch-secondary">
-                                            {scene.focusLine}
-                                        </span>
-                                        <span className="text-sm font-semibold text-stitch-on-surface">{scene.focusSub}</span>
-                                    </div>
-                                    <div className="hidden h-10 w-px bg-stitch-outline/20 sm:block" />
-                                    <div className="flex -space-x-2">
-                                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                                            <AvatarImage src={emmaAvatar} className="object-cover" />
-                                            <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-stitch-surface-container-highest text-xs font-bold text-stitch-primary shadow-sm">
-                                            AI
-                                        </div>
+                                {/* 双头像 */}
+                                <div className="flex -space-x-2">
+                                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                                        <AvatarImage src={emmaAvatar} className="object-cover" />
+                                        <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-stitch-surface-container-highest text-xs font-bold text-stitch-primary shadow-sm dark:border-slate-700">
+                                        AI
                                     </div>
                                 </div>
                             </header>
 
-                            <div
-                                className="relative flex-1 space-y-6 overflow-y-auto bg-stitch-surface px-4 py-6 sm:space-y-8 sm:px-8 sm:py-8"
-                            >
+                            {/* 消息区 */}
+                            <div className="relative flex-1 space-y-6 overflow-y-auto bg-stitch-surface px-4 py-6 sm:space-y-8 sm:px-8 sm:py-8">
                                 <div className="relative mx-auto flex w-full max-w-2xl flex-col space-y-8 px-1">
                                     {isOpening && currentSession.messages.length === 0 && (
                                         <div className="flex max-w-2xl gap-4">
@@ -907,7 +895,7 @@ export function AiChatPage() {
                                                 <AvatarImage src={emmaAvatar} />
                                                 <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
                                             </Avatar>
-                                            <div className="flex items-center gap-3 rounded-2xl rounded-tl-none border border-stitch-outline/10 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
+                                            <div className="flex items-center gap-3 rounded-2xl rounded-tl-none border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                                                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-stitch-primary" />
                                                 <span className="text-sm font-medium text-stitch-on-surface-variant">
                                                     Emma 正在根据当前模式向你搭话…
@@ -924,15 +912,18 @@ export function AiChatPage() {
                                                     ? next.correction.trim()
                                                     : null;
                                             return (
-                                                <div
+                                                <motion.div
                                                     key={`${index}-user-${msg.content?.slice(0, 24) ?? ''}`}
+                                                    initial={{ opacity: 0, y: 8 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.12 }}
                                                     className="flex max-w-2xl flex-row-reverse gap-4 self-end"
                                                 >
                                                     <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stitch-primary-fixed font-bold text-stitch-on-primary-fixed">
                                                         {userInitials}
                                                     </div>
                                                     <div className="min-w-0 space-y-3 text-right">
-                                                        <div className="message-content rounded-2xl rounded-tr-none bg-stitch-primary px-5 py-4 text-left shadow-md">
+                                                        <div className="message-content rounded-2xl rounded-tr-none bg-indigo-600 px-5 py-4 text-left shadow-md dark:bg-indigo-600">
                                                             <p className="text-[15px] font-medium leading-relaxed text-white">
                                                                 {msg.content}
                                                             </p>
@@ -941,8 +932,8 @@ export function AiChatPage() {
                                                             <div className="rounded-xl border border-stitch-secondary/10 bg-stitch-secondary-container/30 p-4 text-left backdrop-blur-sm">
                                                                 <div className="mb-2 flex items-center gap-2">
                                                                     <Sparkle className="h-4 w-4 text-stitch-secondary" />
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-stitch-secondary">
-                                                                        Grammar Suggestion
+                                                                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                                        语法建议
                                                                     </span>
                                                                 </div>
                                                                 <p className="text-xs leading-relaxed text-stitch-on-secondary-fixed-variant">
@@ -951,14 +942,17 @@ export function AiChatPage() {
                                                             </div>
                                                         ) : null}
                                                     </div>
-                                                </div>
+                                                </motion.div>
                                             );
                                         }
                                         const showCorrectionBelowAssistant =
                                             !!msg.correction?.trim() && prev?.role !== 'user';
                                         return (
-                                            <div
+                                            <motion.div
                                                 key={`${index}-asst-${msg.content?.slice(0, 24) ?? ''}`}
+                                                initial={{ opacity: 0, y: 8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.12 }}
                                                 className="flex max-w-2xl gap-4"
                                             >
                                                 <Avatar className="mt-1 h-10 w-10 shrink-0 border border-stitch-outline/10 shadow-sm">
@@ -966,7 +960,7 @@ export function AiChatPage() {
                                                     <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
                                                 </Avatar>
                                                 <div className="min-w-0 space-y-3">
-                                                    <div className="message-content rounded-2xl rounded-tl-none border border-stitch-outline/5 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
+                                                    <div className="message-content rounded-2xl rounded-tl-none border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                                                         <p className="text-[15px] font-medium leading-relaxed text-stitch-on-surface">
                                                             {msg.content}
                                                         </p>
@@ -1012,8 +1006,8 @@ export function AiChatPage() {
                                                         <div className="rounded-xl border border-stitch-secondary/10 bg-stitch-secondary-container/30 p-4 backdrop-blur-sm">
                                                             <div className="mb-2 flex items-center gap-2">
                                                                 <Sparkle className="h-4 w-4 text-stitch-secondary" />
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-stitch-secondary">
-                                                                    Grammar Suggestion
+                                                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                                    语法建议
                                                                 </span>
                                                             </div>
                                                             <p className="text-xs leading-relaxed text-stitch-on-secondary-fixed-variant">
@@ -1022,27 +1016,46 @@ export function AiChatPage() {
                                                         </div>
                                                     ) : null}
                                                 </div>
-                                            </div>
+                                            </motion.div>
                                         );
                                     })}
+                                    {/* Emma 思考中 — 三点 typing indicator */}
                                     {isLoading && (
-                                        <div className="flex max-w-2xl gap-4">
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.12 }}
+                                            className="flex max-w-2xl gap-4"
+                                        >
                                             <Avatar className="mt-1 h-10 w-10 shrink-0 border border-stitch-outline/10 shadow-sm">
                                                 <AvatarImage src={emmaAvatar} />
-                                                <AvatarFallback>EM</AvatarFallback>
+                                                <AvatarFallback className="bg-stitch-primary text-xs text-white">EM</AvatarFallback>
                                             </Avatar>
-                                            <div className="flex items-center gap-3 rounded-2xl rounded-tl-none border border-stitch-outline/10 bg-stitch-surface-container-lowest px-5 py-4 shadow-sm">
-                                                <Loader2 className="h-4 w-4 animate-spin text-stitch-primary" />
-                                                <span className="text-sm font-medium text-stitch-on-surface-variant">
-                                                    Emma is thinking…
-                                                </span>
+                                            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-none border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                                                {([0, 0.15, 0.3] as const).map((delay, i) => (
+                                                    <motion.span
+                                                        key={i}
+                                                        className="size-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
+                                                        animate={{ y: [0, -5, 0] }}
+                                                        transition={{ duration: 0.4, repeat: Infinity, delay, ease: 'easeInOut' }}
+                                                    />
+                                                ))}
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     )}
                                     <div ref={messagesEndRef} />
                                 </div>
                             </div>
 
+                            {/* Tip 条 — 消息区与输入框之间 */}
+                            <div className="flex h-8 shrink-0 items-center gap-1.5 border-t border-slate-100 px-4 dark:border-slate-800">
+                                <Lightbulb className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                                <p className="truncate text-xs italic text-slate-400 dark:text-slate-500">
+                                    {tipText}
+                                </p>
+                            </div>
+
+                            {/* 输入区 */}
                             <footer className="shrink-0 border-t border-stitch-outline/10 bg-stitch-surface-container-low/50 p-4 backdrop-blur-md sm:p-6">
                                 <div className="mx-auto flex max-w-4xl items-center gap-3 rounded-2xl border border-stitch-outline/15 bg-stitch-surface-container-lowest p-2 shadow-lg">
                                     <button
@@ -1085,9 +1098,11 @@ export function AiChatPage() {
                                         >
                                             <ImageIcon className="h-5 w-5" />
                                         </button>
-                                        <Button
+                                        <motion.button
                                             type="button"
                                             onClick={() => void handleSend()}
+                                            whileTap={{ scale: 0.92 }}
+                                            transition={{ type: 'spring', stiffness: 520, damping: 32 }}
                                             disabled={
                                                 isLoading ||
                                                 isOpening ||
@@ -1095,64 +1110,18 @@ export function AiChatPage() {
                                                 (!!currentSession?.openingPending &&
                                                     currentSession.messages.length === 0)
                                             }
-                                            className="h-11 rounded-xl bg-stitch-primary px-3 text-white shadow-sm transition hover:bg-stitch-primary-container active:scale-95 disabled:opacity-40"
+                                            className="flex h-11 items-center justify-center rounded-xl bg-stitch-primary px-3 text-white shadow-sm transition hover:bg-stitch-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
                                         >
                                             <Send className="h-5 w-5" />
-                                        </Button>
+                                        </motion.button>
                                     </div>
                                 </div>
-                                <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-tighter text-stitch-on-surface-variant/40">
+                                <p className="mt-3 text-center text-[10px] text-slate-400/60 dark:text-slate-500/50">
                                     Enter 发送 · 麦克风英文听写
                                     {!speechSupported ? '（当前环境不支持语音识别）' : null}
                                 </p>
                             </footer>
                         </div>
-                        <aside className="hidden w-80 shrink-0 flex-col gap-6 overflow-y-auto border-l border-stitch-outline/10 bg-stitch-surface-container-low p-6 xl:flex">
-                            <h3 className="mb-2 text-sm font-black uppercase tracking-widest text-stitch-on-surface-variant">
-                                Practice Insights
-                            </h3>
-                            <div className="rounded-xl border border-stitch-outline/5 bg-stitch-surface-container-lowest p-5 shadow-sm">
-                                <div className="mb-4 flex items-center justify-between">
-                                    <span className="text-xs font-bold text-stitch-on-surface-variant">Conversation Flow</span>
-                                    <span className="text-xs font-black text-stitch-secondary">{insightFlow}%</span>
-                                </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-stitch-surface-container-highest">
-                                    <div
-                                        className="h-full rounded-full bg-stitch-secondary"
-                                        style={{ width: `${insightFlow}%` }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-2 rounded-xl bg-stitch-primary-fixed/30 p-4">
-                                    <BookOpen className="h-5 w-5 text-stitch-primary" />
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase text-stitch-primary/70">Words</p>
-                                        <p className="text-xl font-black text-stitch-primary">{wordCount}</p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2 rounded-xl bg-stitch-tertiary-fixed/30 p-4">
-                                    <Bolt className="h-5 w-5 text-stitch-tertiary" />
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase text-stitch-tertiary/70">Chats</p>
-                                        <p className="text-xl font-black text-stitch-tertiary">{lifetime.chatMessages}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-auto rounded-xl border border-stitch-outline/10 bg-stitch-surface-container-highest/50 p-5">
-                                <div className="mb-3 flex items-center gap-2">
-                                    <Lightbulb className="text-lg text-stitch-secondary" />
-                                    <span className="text-xs font-black uppercase tracking-widest text-stitch-on-surface">
-                                        Tutor&apos;s Tip
-                                    </span>
-                                </div>
-                                <p className="text-xs italic leading-relaxed text-stitch-on-surface-variant">
-                                    {scene.focusSub.includes('点餐')
-                                        ? "在餐厅场景里，用 I'll have… 或 Could I get… 比直说 I want… 更地道。"
-                                        : '保持句子简短、先听懂再回答，对话会更顺畅。'}
-                                </p>
-                            </div>
-                        </aside>
                     </div>
                     ) : (
                         <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden bg-stitch-surface px-6 text-center">
