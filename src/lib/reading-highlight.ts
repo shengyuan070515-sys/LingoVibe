@@ -27,12 +27,20 @@ const PRIORITY: Record<Exclude<HighlightKind, 'none'>, number> = {
     saved: 2,
 };
 
-function normalize(list: string[]): string[] {
+function normalize(list: string[], requireMultiWord = false): string[] {
     const seen = new Set<string>();
     const out: string[] = [];
     for (const raw of list) {
         const t = raw?.trim();
         if (!t) continue;
+        if (requireMultiWord) {
+            // Phrase entries must be multi-word collocations. Single words belong
+            // in keyWords / savedWords. This guards against older articles whose
+            // keyPhrases slipped a bare word in before the server-side sanitizer
+            // was in place.
+            const tokens = t.split(/\s+/).filter(Boolean);
+            if (tokens.length < 2) continue;
+        }
         const k = t.toLowerCase();
         if (seen.has(k)) continue;
         seen.add(k);
@@ -68,7 +76,7 @@ function findPhraseMatches(hay: string, phrase: string): Match[] {
     const target = phrase.toLowerCase();
     const out: Match[] = [];
     let i = 0;
-    while (true) {
+    for (;;) {
         const idx = lower.indexOf(target, i);
         if (idx < 0) break;
         out.push({
@@ -101,7 +109,7 @@ function resolveMatches(matches: Match[]): Match[] {
 }
 
 export function planHighlightSegments(text: string, opts: HighlightPlanOptions): HighlightSegment[] {
-    const phrases = normalize(opts.phrases);
+    const phrases = normalize(opts.phrases, true);
     const keyWords = normalize(opts.keyWords);
     const savedWords = normalize(Array.from(opts.savedWords));
 

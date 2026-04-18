@@ -86,5 +86,29 @@ describe('planHighlightSegments', () => {
         const r = planHighlightSegments('categorical', opts({ keyWords: ['cat'] }));
         expect(r).toEqual([{ text: 'categorical', kind: 'none' }]);
     });
+
+    it('drops single-word entries from phrases (client-side guard for legacy articles)', () => {
+        // 'sustainability' is a single word — it must not be treated as a phrase,
+        // even if a legacy article's keyPhrases array contains it.
+        const r = planHighlightSegments('Focus on sustainability and climate change.', opts({
+            phrases: ['sustainability', 'climate change'],
+        }));
+        const phraseSegs = r.filter((s) => s.kind === 'phrase');
+        expect(phraseSegs).toHaveLength(1);
+        expect(phraseSegs[0]!.text.toLowerCase()).toBe('climate change');
+    });
+
+    it('still allows a single-word entry to highlight if it appears as a keyWord', () => {
+        // If the AI only produced single-word "phrases", we prefer not to drop the
+        // word entirely — downstream code can pass it via keyWords to keep it visible
+        // (this test documents the separation of concerns).
+        const r = planHighlightSegments('Sustainability matters.', opts({
+            phrases: ['sustainability'],
+            keyWords: ['sustainability'],
+        }));
+        const kinds = r.map((s) => s.kind);
+        expect(kinds).toContain('keyword');
+        expect(kinds).not.toContain('phrase');
+    });
 });
 

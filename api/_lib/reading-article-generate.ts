@@ -138,7 +138,7 @@ function buildCorePrompt(topic: string, difficulty: AiDifficulty): { system: str
         '- Do not include A/B/C/D letter prefixes inside options strings.',
         '- DO NOT include any vocabulary list. Key vocabulary is selected separately by a dictionary pipeline.',
         '- Produce 3-5 keyPhrases. Each MUST appear verbatim (same casing) somewhere in the body.',
-        '- keyPhrases should be multi-word collocations (2-5 words each), NOT single words. Example: "climate change", "make up for", "on the verge of".',
+        '- keyPhrases MUST be multi-word collocations of 2-5 words each. Single-word entries will be rejected. Good: "climate change", "make up for", "on the verge of". Bad: "sustainability", "innovation", "foster".',
     ].join('\n');
 
     const user = [
@@ -186,12 +186,7 @@ function parseCoreJson(raw: string): ArticleCore {
         })
         .filter((q) => q.question && q.options.length === 4);
 
-    const phrasesRaw = Array.isArray(obj.keyPhrases) ? obj.keyPhrases : [];
-    const keyPhrases = phrasesRaw
-        .map((p) => asString(p))
-        .filter((p) => p.length > 0 && p.length <= 80)
-        .filter((p) => body.toLowerCase().includes(p.toLowerCase()))
-        .slice(0, 5);
+    const keyPhrases = sanitizeKeyPhrases(obj.keyPhrases, body);
 
     return { title, body, summary, quiz, keyPhrases };
 }
@@ -293,7 +288,7 @@ function buildLegacyPrompt(topic: string, difficulty: AiDifficulty): { system: s
         'Rules:',
         '- Produce exactly 5 keyVocabulary items; every word MUST appear verbatim in the body.',
         '- Produce 3-5 keyPhrases. Each MUST appear verbatim (same casing) somewhere in the body.',
-        '- keyPhrases should be multi-word collocations (2-5 words each), NOT single words. Example: "climate change", "make up for", "on the verge of".',
+        '- keyPhrases MUST be multi-word collocations of 2-5 words each. Single-word entries will be rejected. Good: "climate change", "make up for", "on the verge of". Bad: "sustainability", "innovation", "foster".',
         '- Produce exactly 2 quiz items.',
         '- Do not include A/B/C/D letter prefixes inside options strings.',
         '- Keep the body self-contained; no links or images.',
@@ -368,12 +363,7 @@ function parseLegacyJson(raw: string, difficulty: AiDifficulty): AiGeneratedArti
         })
         .filter((q) => q.question && q.options.length === 4);
 
-    const phrasesRaw = Array.isArray(obj.keyPhrases) ? obj.keyPhrases : [];
-    const keyPhrases = phrasesRaw
-        .map((p) => asString(p))
-        .filter((p) => p.length > 0 && p.length <= 80)
-        .filter((p) => body.toLowerCase().includes(p.toLowerCase()))
-        .slice(0, 5);
+    const keyPhrases = sanitizeKeyPhrases(obj.keyPhrases, body);
 
     return { title, body, difficulty, summary, keyVocabulary, keyPhrases, quiz };
 }
@@ -401,6 +391,41 @@ function asStringArray(x: unknown, expectedLen?: number): string[] {
     const arr = x.map((v) => asString(v)).filter((s) => s.length > 0);
     if (expectedLen !== undefined && arr.length !== expectedLen) return [];
     return arr;
+}
+
+/**
+ * Clean up a raw `keyPhrases` array from the LLM.
+ *
+ * Rules (enforced server-side regardless of what the model does):
+ *  - Must be a non-empty string after trim.
+ *  - Length 2..80 chars.
+ *  - Must be a multi-word collocation (>= 2 whitespace-separated tokens).
+ *    This is the whole point of keyPhrases — single words belong in keyVocabulary.
+ *  - Must appear verbatim (case-insensitive) in the article body, so the
+ *    client-side highlighter is guaranteed to find a match.
+ *  - De-duplicated (case-insensitive), first occurrence wins.
+ *  - Capped at 5 entries.
+ */
+function sanitizeKeyPhrases(raw: unknown, body: string): string[] {
+    const input = Array.isArray(raw) ? raw : [];
+    const lowerBody = body.toLowerCase();
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of input) {
+        const p = asString(item);
+        if (!p) continue;
+        if (p.length < 2 || p.length > 80) continue;
+        // multi-word check: split on any whitespace, need at least 2 non-empty tokens
+        const tokens = p.split(/\s+/).filter(Boolean);
+        if (tokens.length < 2) continue;
+        if (!lowerBody.includes(p.toLowerCase())) continue;
+        const k = p.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(p);
+        if (out.length >= 5) break;
+    }
+    return out;
 }
 
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
