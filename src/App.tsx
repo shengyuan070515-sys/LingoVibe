@@ -2,9 +2,7 @@ import * as React from "react"
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Settings } from "lucide-react"
-import { seedDemoDataIfEmpty } from "@/lib/mockData"
 import { clearLegacyPodcastStorage } from "@/lib/migrations/clear-legacy-podcast-storage"
-import { useWordBankStore } from "@/store/wordBankStore"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
@@ -75,10 +73,6 @@ function AppShell() {
 
   React.useEffect(() => {
     clearLegacyPodcastStorage();
-    const run = () => seedDemoDataIfEmpty();
-    run();
-    const u1 = useWordBankStore.persist.onFinishHydration(run);
-    return () => { u1(); };
   }, []);
 
   const pageTitle = routeTitles[location.pathname] ?? '首页';
