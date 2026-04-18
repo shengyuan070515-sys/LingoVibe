@@ -10,7 +10,8 @@ import type { VercelResponse } from '@vercel/node';
  * 便于以后加自定义域名或预览部署而不用改代码。
  */
 
-const PRODUCTION_ORIGIN = 'https://lingo-vibe-five.vercel.app';
+const PRODUCTION_ORIGIN =
+    process.env.LINGOVIBE_PRODUCTION_ORIGIN?.trim() || 'https://lingo-vibe-five.vercel.app';
 
 function extraAllowed(): string[] {
     const raw = process.env.LINGOVIBE_ALLOWED_ORIGINS?.trim();
@@ -40,10 +41,18 @@ function isLocalOrPrivateOrigin(origin: string): boolean {
     }
 }
 
+function wwwVariant(o: string): string {
+    if (o.startsWith('https://www.')) return o.replace('https://www.', 'https://');
+    if (o.startsWith('http://www.')) return o.replace('http://www.', 'http://');
+    if (o.startsWith('https://')) return o.replace('https://', 'https://www.');
+    if (o.startsWith('http://')) return o.replace('http://', 'http://www.');
+    return o;
+}
+
 export function isOriginAllowed(origin: string | undefined): boolean {
     if (!origin) return false;
-    if (origin === PRODUCTION_ORIGIN) return true;
-    if (extraAllowed().includes(origin)) return true;
+    if (origin === PRODUCTION_ORIGIN || origin === wwwVariant(PRODUCTION_ORIGIN)) return true;
+    if (extraAllowed().some((a) => origin === a || origin === wwwVariant(a))) return true;
     if (isLocalOrPrivateOrigin(origin)) return true;
     return false;
 }
