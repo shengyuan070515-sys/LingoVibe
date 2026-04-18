@@ -52,7 +52,7 @@ export function VisualDictionaryCardBody({
                     </span>
                     {difficultyLabel && (
                         <span
-                            className="rounded-full border border-teal-400/40 bg-teal-50 px-2 py-0.5 text-[11px] font-medium text-teal-700"
+                            className="rounded-full border border-teal-400/40 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700"
                             title="词典判定的学习难度档位"
                         >
                             {difficultyLabel}
@@ -84,7 +84,7 @@ export function VisualDictionaryCardBody({
                             {exampleSentence.trim()}
                         </p>
                     ) : null}
-                    <p className="mb-3 mt-4 text-[10px] uppercase tracking-widest text-gray-400">— LINGOVIBE CONTEXT</p>
+                    <p className="mb-3 mt-4 text-xs uppercase tracking-widest text-gray-400">— LINGOVIBE CONTEXT</p>
                     {exampleTranslation?.trim() ? (
                         <p className="text-center text-sm text-gray-500">{exampleTranslation.trim()}</p>
                     ) : null}

@@ -16,9 +16,9 @@ export function ActivityHeatmap({ dailyActivity, weeks = 14, className }: Activi
     return (
         <div className={cn('relative w-full overflow-x-auto', className)}>
             <div className="flex min-w-0 flex-col gap-1 pb-1">
-                <p className="pl-8 text-[10px] text-muted-foreground">近 {weeks} 周 · 每日学习活跃度</p>
+                <p className="pl-8 text-xs text-muted-foreground">近 {weeks} 周 · 每日学习活跃度</p>
                 <div className="flex gap-1">
-                    <div className="flex w-7 shrink-0 flex-col justify-between py-0.5 text-[9px] leading-none text-muted-foreground">
+                    <div className="flex w-7 shrink-0 flex-col justify-between py-0.5 text-xs leading-none text-muted-foreground">
                         <span>日</span>
                         <span>六</span>
                     </div>
@@ -35,7 +35,7 @@ export function ActivityHeatmap({ dailyActivity, weeks = 14, className }: Activi
                                     return (
                                         <div
                                             key={`e-${dow}-${w}`}
-                                            className="aspect-square min-h-[10px] max-h-4 rounded-sm bg-muted/30"
+                                            className="aspect-square min-h-[14px] max-h-5 rounded-sm bg-muted/30"
                                         />
                                     );
                                 }
@@ -44,7 +44,7 @@ export function ActivityHeatmap({ dailyActivity, weeks = 14, className }: Activi
                                         key={cell.date}
                                         type="button"
                                         title={`${cell.date} · 活跃度 ${cell.count}`}
-                                        className="aspect-square min-h-[10px] max-h-4 cursor-pointer rounded-sm border border-transparent outline-none transition hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary"
+                                        className="aspect-square min-h-[14px] max-h-5 cursor-pointer rounded-sm border border-transparent outline-none transition hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary"
                                         style={{ backgroundColor: heatmapFill(cell.level) }}
                                         onMouseEnter={(e) => {
                                             const r = e.currentTarget.getBoundingClientRect();
@@ -63,7 +63,7 @@ export function ActivityHeatmap({ dailyActivity, weeks = 14, className }: Activi
                         )}
                     </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 pl-8 pt-2 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3 pl-8 pt-2 text-xs text-muted-foreground">
                     <span>更少</span>
                     <div className="flex gap-1">
                         {([0, 1, 2, 3, 4] as const).map((lv) => (

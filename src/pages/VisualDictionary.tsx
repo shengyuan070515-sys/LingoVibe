@@ -186,7 +186,7 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
         };
 
     return (
-        <div className="relative flex h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-5.5rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface md:h-[calc(100vh-8rem)] md:max-h-[calc(100vh-8rem)] md:flex-row md:rounded-3xl">
+        <div className="relative flex h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-5.5rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface md:h-[calc(100dvh-8rem)] md:max-h-[calc(100dvh-8rem)] md:flex-row md:rounded-3xl">
             {/* 左：搜索历史（抽屉/固定） */}
             {showHistory && (
                 <>
@@ -258,7 +258,7 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
                                     </span>
                                 </Button>
                                 <div className="min-w-0 flex-1 pl-1">
-                                    <h1 className="truncate text-[13px] font-semibold uppercase tracking-[0.18em] text-stitch-on-surface-variant">
+                                    <h1 className="truncate text-sm font-semibold uppercase tracking-[0.18em] text-stitch-on-surface-variant">
                                         Visual Dictionary
                                     </h1>
                                 </div>
@@ -347,7 +347,7 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
                                                 </div>
 
                                                 <div className="flex flex-col gap-4 p-6 sm:p-7 lg:p-8">
-                                                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stitch-on-surface-variant/80">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stitch-on-surface-variant/80">
                                                         <span
                                                             aria-hidden
                                                             className="inline-block h-3 w-3 rounded-full ring-1 ring-inset ring-black/10"
@@ -541,7 +541,7 @@ function SavedWordsPanel({
                     </div>
                 </div>
 
-                <div className="-mx-1 flex-1 space-y-2 overflow-y-auto pr-1 xl:max-h-[min(50vh,460px)]">
+                <div className="-mx-1 flex-1 space-y-2 overflow-y-auto pr-1 xl:max-h-[min(50svh,460px)]">
                     {bankWords.length === 0 ? (
                         <p className="px-1 text-sm text-stitch-on-surface-variant">
                             还没有单词。查一个词后点"加入生词本"即可保存。
@@ -584,7 +584,7 @@ function SavedWordsPanel({
                 </button>
 
                 <div className="rounded-2xl bg-gradient-to-br from-stitch-secondary to-stitch-on-secondary-container p-4 text-white shadow-sm">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
                         <TrendingUp className="h-4 w-4" />
                         Learning Stats
                     </div>

@@ -56,7 +56,7 @@ export function MobileTabBar() {
                                     )}
                                 >
                                     <Icon className="h-6 w-6" />
-                                    <span className="text-[11px] font-medium leading-none">{label}</span>
+                                    <span className="text-xs font-medium leading-none">{label}</span>
                                 </button>
                             ))}
                         </div>
@@ -84,7 +84,7 @@ export function MobileTabBar() {
                                 )}
                             >
                                 <Icon className={cn('h-6 w-6 shrink-0', active ? 'stroke-[2]' : 'stroke-[1.5]')} aria-hidden />
-                                <span className={cn('text-[10px] font-medium leading-none', active && 'font-semibold')}>{label}</span>
+                                <span className={cn('text-xs font-medium leading-none', active && 'font-semibold')}>{label}</span>
                             </button>
                         );
                     })}
@@ -97,7 +97,7 @@ export function MobileTabBar() {
                         )}
                     >
                         <MoreHorizontal className={cn('h-6 w-6 shrink-0', isMoreActive ? 'stroke-[2]' : 'stroke-[1.5]')} aria-hidden />
-                        <span className={cn('text-[10px] font-medium leading-none', isMoreActive && 'font-semibold')}>更多</span>
+                        <span className={cn('text-xs font-medium leading-none', isMoreActive && 'font-semibold')}>更多</span>
                     </button>
                 </div>
             </nav>

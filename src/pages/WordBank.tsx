@@ -30,7 +30,7 @@ function AccuracyBadge({
         return (
             <span
                 className={cn(
-                    'text-[11px] font-medium tabular-nums',
+                    'text-xs font-medium tabular-nums',
                     onImage ? 'text-white/85' : 'text-slate-400'
                 )}
                 style={onImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
@@ -44,7 +44,7 @@ function AccuracyBadge({
         return (
             <span
                 className={cn(
-                    'text-[11px] font-medium tabular-nums',
+                    'text-xs font-medium tabular-nums',
                     onImage ? 'text-white/90' : 'text-slate-500'
                 )}
                 style={onImage ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
@@ -60,7 +60,7 @@ function AccuracyBadge({
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
+                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums',
                 onImage
                     ? 'bg-black/35 text-white'
                     : tone === 'ok'
@@ -225,7 +225,7 @@ export function WordBankPage() {
                                 </Button>
                             </div>
                             <select
-                                className="h-9 w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 sm:w-auto sm:max-w-[min(100%,14rem)]"
+                                className="min-h-[44px] w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 sm:w-auto sm:max-w-[min(100%,14rem)]"
                                 defaultValue=""
                                 onChange={(e) => {
                                     const v = e.target.value as WordBankSortMode | '';
@@ -328,7 +328,7 @@ export function WordBankPage() {
                         role="group"
                         aria-label="卡片配图自动切换"
                     >
-                        <span className="w-full text-[11px] font-medium text-gray-500 sm:w-auto sm:pr-1">
+                        <span className="w-full text-xs font-medium text-gray-500 sm:w-auto sm:pr-1">
                             配图轮播
                         </span>
                         <button
@@ -561,7 +561,7 @@ export function WordBankPage() {
                                                 [item.id]: ((prev[item.id] || 0) + 1) % images.length,
                                             }));
                                         }}
-                                        className="absolute right-3 bottom-3 z-20 h-8 w-8 rounded-full bg-white/85 backdrop-blur border border-white shadow-sm text-gray-600 hover:text-gray-900 hover:bg-white transition-all opacity-0 group-hover:opacity-100"
+                                        className="absolute right-3 bottom-3 z-20 h-9 w-9 rounded-full bg-white/85 backdrop-blur border border-white shadow-sm text-gray-600 hover:text-gray-900 hover:bg-white transition-all opacity-0 group-hover:opacity-100"
                                         title="手动切换图片"
                                         aria-label="手动切换图片"
                                     >

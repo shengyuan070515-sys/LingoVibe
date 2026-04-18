@@ -40,13 +40,13 @@ export function SettingsPage() {
                             onChange={(e) => setDisplayNameInput(e.target.value)}
                             placeholder="例如：小雅"
                             maxLength={24}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                            className="w-full min-h-[44px] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
                         />
                     </div>
                     <Button
                         type="button"
                         variant="secondary"
-                        className="shrink-0 rounded-xl"
+                        className="w-full rounded-xl sm:w-auto"
                         onClick={() => {
                             setDisplayName(displayNameInput.trim());
                             toast('昵称已保存，返回首页即可看到效果', 'success');
@@ -82,7 +82,7 @@ export function SettingsPage() {
                             value={unsplashInput}
                             onChange={(e) => setUnsplashInput(e.target.value)}
                             placeholder="粘贴你的 Unsplash Access Key"
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full min-h-[44px] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         />
                     </div>
                     <Button

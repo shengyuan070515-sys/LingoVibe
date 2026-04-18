@@ -68,7 +68,7 @@ export function VocabularyGrowthChart({ words, className }: VocabularyGrowthChar
                     strokeOpacity="0.2"
                     strokeDasharray="6 4"
                 />
-                <text x="48" y={layout.goalY - 4} className="fill-muted-foreground" style={{ fontSize: 9 }}>
+                <text x="48" y={layout.goalY - 4} className="fill-muted-foreground" style={{ fontSize: 11 }}>
                     目标 {GOAL}
                 </text>
                 <path d={layout.areaD} fill="url(#vocabFill)" />
@@ -102,7 +102,7 @@ export function VocabularyGrowthChart({ words, className }: VocabularyGrowthChar
                         估算阅读词汇量{' '}
                         <span className="font-mono font-bold text-indigo-600">{hover.estimatedLexicon}</span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground">收录加权 {hover.cumulativeEntries}</div>
+                    <div className="text-xs text-muted-foreground">收录加权 {hover.cumulativeEntries}</div>
                 </div>
             )}
         </div>

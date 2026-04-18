@@ -417,7 +417,7 @@ export function ReadingArticleView({
                         loading="lazy"
                         className={cn(
                             className,
-                            'max-h-[min(50vh,420px)] w-auto max-w-full rounded-lg shadow-sm'
+                            'max-h-[min(50svh,420px)] w-auto max-w-full rounded-lg shadow-sm'
                         )}
                     />
                 );
@@ -513,7 +513,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-8 flex-1 text-xs"
+                            className="h-9 flex-1 text-xs"
                             onClick={() => openWordCard(bubble.text)}
                         >
                             <Sparkles className="mr-1 h-3 w-3" />
@@ -523,7 +523,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 flex-1 text-xs"
+                            className="h-9 flex-1 text-xs"
                             onClick={() => void addWordFromBubble(bubble.text)}
                         >
                             <BookMarked className="mr-1 h-3 w-3" />
@@ -536,7 +536,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-8 flex-1 text-xs"
+                            className="h-9 flex-1 text-xs"
                             onClick={() => openInsight(bubble.text, 'translate')}
                         >
                             <Languages className="mr-1 h-3 w-3" />
@@ -546,7 +546,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 flex-1 text-xs"
+                            className="h-9 flex-1 text-xs"
                             onClick={() => openInsight(bubble.text, 'grammar')}
                         >
                             语法分析
@@ -606,7 +606,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 gap-1 border-teal-200 text-teal-800 hover:bg-teal-50"
+                            className="h-9 gap-1 border-teal-200 text-teal-800 hover:bg-teal-50"
                             onClick={() => {
                                 setAddedToLibrary(article.id, true);
                                 toast('已加入我的书库', 'success');
@@ -620,7 +620,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="h-8 gap-1 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                            className="h-9 gap-1 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                             onClick={() => {
                                 setAddedToLibrary(article.id, false);
                                 toast('已移出我的书库', 'default');
@@ -637,7 +637,7 @@ export function ReadingArticleView({
 
             {article.summary ? (
                 <div className="rounded-xl border border-teal-100/80 bg-teal-50/50 p-3 text-sm leading-relaxed text-teal-900">
-                    <span className="mr-1 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
+                    <span className="mr-1 inline-flex items-center gap-1 text-xs font-semibold text-teal-700">
                         <Sparkles className="h-3 w-3" />
                         一句话摘要
                     </span>
@@ -687,7 +687,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 gap-1"
+                            className="h-9 gap-1"
                             disabled={transLoading}
                             onClick={() => void handleTranslateFull()}
                         >
@@ -702,7 +702,7 @@ export function ReadingArticleView({
                             type="button"
                             size="sm"
                             variant={articleTts.isPlaying ? 'default' : 'outline'}
-                            className="h-8 gap-1"
+                            className="h-9 gap-1"
                             onClick={articleTts.toggle}
                             aria-label={articleTts.isPlaying ? '停止朗读' : '朗读全文'}
                         >
@@ -738,7 +738,7 @@ export function ReadingArticleView({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="mt-2 h-8"
+                                className="mt-2 h-9"
                                 onClick={() => setFullZhOpen(false)}
                             >
                                 隐藏
@@ -751,7 +751,7 @@ export function ReadingArticleView({
                         className="rounded-2xl border border-slate-100 bg-white/80 p-5 shadow-sm select-text"
                     >
                         {(phrasesList.length > 0 || keyWordsList.length > 0 || (showSavedHl && savedWordSet.size > 0)) && (
-                            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                                 <span className="font-medium text-slate-400">图例</span>
                                 {phrasesList.length > 0 && (
                                     <span className="inline-flex items-center gap-1">
@@ -796,7 +796,7 @@ export function ReadingArticleView({
                         >
                             {summaryMode ? (
                                 <div className="not-prose rounded-xl border border-amber-200/90 bg-amber-50/95 p-4 shadow-sm">
-                                    <p className="text-[13px] font-semibold text-amber-950">核心摘要</p>
+                                    <p className="text-sm font-semibold text-amber-950">核心摘要</p>
                                     <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-amber-950/95">
                                         {displayBody}
                                     </p>
@@ -826,7 +826,7 @@ export function ReadingArticleView({
                 </div>
 
                 {hasSidebar ? (
-                    <aside className="flex flex-col gap-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+                    <aside className="flex flex-col gap-6 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1">
                         {article.keyVocabulary && article.keyVocabulary.length > 0 ? (
                             <ReadingVocabCards items={article.keyVocabulary} />
                         ) : null}
@@ -837,7 +837,7 @@ export function ReadingArticleView({
                 ) : null}
             </div>
 
-            <p className="text-[11px] leading-relaxed text-slate-500">
+            <p className="text-xs leading-relaxed text-slate-500">
                 翻译与语法分析由服务端 AI 代理提供，无需额外配置。朗读使用浏览器语音合成，文本在本地处理。
             </p>
         </div>

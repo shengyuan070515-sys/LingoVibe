@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    overflow-x: hidden;
+  }
   body {
     @apply font-sans antialiased text-stitch-on-surface;
   }

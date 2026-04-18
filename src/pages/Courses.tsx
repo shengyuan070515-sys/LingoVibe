@@ -35,7 +35,7 @@ export function CoursesPage() {
                         <BookOpen className="h-7 w-7" strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-teal-700/90">情景微课</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700/90">情景微课</p>
                         <h2 className="mt-2 text-lg font-semibold text-slate-800 sm:text-xl">{MICRO_LESSON_TITLE}</h2>
                         <p className="mt-3 text-sm leading-relaxed text-slate-600">
                             三步通关：对话输入、AI 点单输出、收录生词。纯前端演示，可随时扩展与 AI 对话联动。

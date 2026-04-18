@@ -131,7 +131,7 @@ export function ReadingWordCardModal({
                             }}
                         />
                         <div className="absolute bottom-5 left-4 right-4 z-10 flex items-center justify-between gap-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
                                 VISUAL DICTIONARY
                             </div>
                             {heroUrls.length > 1 ? (
@@ -189,7 +189,7 @@ export function ReadingWordCardModal({
                                 onSpeak={playWord}
                                 difficultyLabel={data.difficultyLabel}
                             />
-                            <p className="mb-4 text-center text-[10px] text-gray-400">{articleContextLabel}</p>
+                            <p className="mb-4 text-center text-xs text-gray-400">{articleContextLabel}</p>
                             <div className="mt-4 flex gap-2">
                                 <Button
                                     type="button"

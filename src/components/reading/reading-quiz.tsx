@@ -48,7 +48,7 @@ export function ReadingQuiz({ items }: ReadingQuizProps) {
                         <span className="text-muted-foreground">
                             答对 <span className="text-primary font-semibold">{correctCount}</span> / {items.length}
                         </span>
-                        <Button variant="ghost" size="sm" onClick={handleReset} className="h-7">
+                        <Button variant="ghost" size="sm" onClick={handleReset} className="h-9">
                             <RotateCcw className="mr-1 h-3 w-3" />
                             重做
                         </Button>

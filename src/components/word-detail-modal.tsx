@@ -157,7 +157,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                             }}
                         />
                         <div className="absolute bottom-5 left-4 right-4 z-10 flex items-center justify-between gap-3">
-                            <div className="text-[11px] text-white/95 font-semibold tracking-[0.2em] uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                            <div className="text-xs text-white/95 font-semibold tracking-[0.2em] uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
                                 VISUAL DICTIONARY
                             </div>
                             {images.length > 1 && (
@@ -235,7 +235,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                                 className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center font-serif text-sm italic text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 rows={3}
                             />
-                            <p className="mb-3 mt-4 text-[10px] uppercase tracking-widest text-gray-400">— LINGOVIBE CONTEXT</p>
+                            <p className="mb-3 mt-4 text-xs uppercase tracking-widest text-gray-400">— LINGOVIBE CONTEXT</p>
                             <textarea
                                 value={draft.exampleTranslation}
                                 onChange={(e) => setDraft((d) => ({ ...d, exampleTranslation: e.target.value }))}
@@ -262,7 +262,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                     <section className="mt-6 border-t border-slate-100 pt-5">
                         <header className="mb-2 flex items-baseline justify-between">
                             <h3 className="text-sm font-semibold text-slate-700">最近复习</h3>
-                            <span className="text-[11px] text-slate-500 tabular-nums">
+                            <span className="text-xs text-slate-500 tabular-nums">
                                 {accuracy.rate !== null
                                     ? `正确率 ${Math.round(accuracy.rate * 100)}% · 共 ${accuracy.totalReviews} 次`
                                     : accuracy.totalReviews > 0
@@ -357,7 +357,7 @@ export function WordDetailModal({ word, isOpen, onClose }: WordDetailModalProps)
                     )}
                 </div>
                 {isImagesLoading && (
-                    <div className="mt-4 text-center text-[10px] text-gray-400">
+                    <div className="mt-4 text-center text-xs text-gray-400">
                         图片加载中...
                     </div>
                 )}

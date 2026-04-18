@@ -126,7 +126,7 @@ function GenerationProgress({ startedAt }: { startedAt: number }) {
                     style={{ width: `${ratio * 100}%` }}
                 />
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
                 即使你切到别的模块，生成会继续进行；完成后文章会出现在下方「我最近生成的」，点文章顶部「加入书库」可长期保留。
             </p>
         </div>
@@ -410,7 +410,7 @@ export function DailyReadingPage() {
                             type="button"
                             onClick={() => setActiveTab(t.id)}
                             className={cn(
-                                'shrink-0 rounded-t-lg px-3 py-2 text-sm font-medium transition-colors',
+                                'shrink-0 min-h-[44px] rounded-t-lg px-3 py-2 text-sm font-medium transition-colors',
                                 activeTab === t.id
                                     ? 'bg-white text-teal-800 shadow-sm ring-1 ring-slate-100'
                                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
@@ -434,7 +434,7 @@ export function DailyReadingPage() {
                             今日精选 · AI 生成
                         </h2>
                         {featuredDateKey ? (
-                            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-teal-800 ring-1 ring-teal-100">
+                            <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-teal-800 ring-1 ring-teal-100">
                                 今日 {featuredDateKey}
                             </span>
                         ) : null}
@@ -465,10 +465,10 @@ export function DailyReadingPage() {
                                     className="flex flex-col rounded-xl border border-slate-100/90 bg-white/90 p-3 shadow-sm"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-1">
-                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                             {item.source === 'hot' ? '热点话题' : '精选主题'}
                                         </span>
-                                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-800 ring-1 ring-teal-100">
+                                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 ring-1 ring-teal-100">
                                             {DIFF_LABELS[item.difficulty]}
                                         </span>
                                     </div>
@@ -480,14 +480,13 @@ export function DailyReadingPage() {
                                             {item.summary}
                                         </p>
                                     ) : null}
-                                    <div className="mt-2 flex flex-wrap gap-1 text-[10px] text-slate-500">
+                                    <div className="mt-2 flex flex-wrap gap-1 text-xs text-slate-500">
                                         <span>词汇 {item.keyVocabulary?.length ?? 0}</span>
                                         <span>·</span>
                                         <span>测验 {item.quiz?.length ?? 0} 题</span>
                                     </div>
                                     <Button
                                         type="button"
-                                        size="sm"
                                         className="mt-3 w-full gap-1 bg-teal-600 text-white hover:bg-teal-700"
                                         disabled={!!openingFeaturedId}
                                         onClick={() => openFeaturedItem(item)}
@@ -572,7 +571,7 @@ export function DailyReadingPage() {
                             <button
                                 key={t}
                                 type="button"
-                                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-800"
+                                className="rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-800"
                                 onClick={() => setGenTopic(t)}
                                 disabled={generating}
                             >
@@ -590,7 +589,7 @@ export function DailyReadingPage() {
                             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                                 <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
                                 我最近生成的
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                     {recentAiArticles.length}
                                 </span>
                             </h3>
@@ -604,7 +603,7 @@ export function DailyReadingPage() {
                                             <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800 line-clamp-2">
                                                 {a.sourceTitle}
                                             </p>
-                                            <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">
+                                            <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-100">
                                                 {DIFF_LABELS[a.difficulty]}
                                             </span>
                                         </div>
@@ -616,7 +615,7 @@ export function DailyReadingPage() {
                                             <p className="mt-1 text-xs text-slate-500">话题：{a.topic}</p>
                                         ) : null}
                                         <div className="mt-2 flex items-center justify-between gap-2">
-                                            <span className="text-[11px] text-slate-500">
+                                            <span className="text-xs text-slate-500">
                                                 {new Date(a.fetchedAt).toLocaleString('zh-CN', {
                                                     month: 'numeric',
                                                     day: 'numeric',
@@ -624,7 +623,7 @@ export function DailyReadingPage() {
                                                     minute: '2-digit',
                                                 })}
                                                 {a.addedToLibrary ? (
-                                                    <span className="ml-2 inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-100">
+                                                    <span className="ml-2 inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-xs font-semibold text-teal-700 ring-1 ring-teal-100">
                                                         已在书库
                                                     </span>
                                                 ) : null}
@@ -634,7 +633,7 @@ export function DailyReadingPage() {
                                                     type="button"
                                                     aria-label="删除此文章"
                                                     title="删除"
-                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                                                     onClick={() => {
                                                         if (window.confirm(`确认删除「${a.sourceTitle}」？该操作不可撤销。`)) {
                                                             remove(a.id);
@@ -648,7 +647,7 @@ export function DailyReadingPage() {
                                                     type="button"
                                                     size="sm"
                                                     variant="ghost"
-                                                    className="h-7 text-xs text-indigo-700 hover:bg-indigo-50"
+                                                    className="h-9 text-xs text-indigo-700 hover:bg-indigo-50"
                                                     onClick={() => setOpenId(a.id)}
                                                 >
                                                     继续阅读 →
@@ -692,7 +691,7 @@ export function DailyReadingPage() {
                             <button
                                 key={t}
                                 type="button"
-                                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-teal-50 hover:text-teal-800"
+                                className="rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-teal-50 hover:text-teal-800"
                                 onClick={() => setQuery(t)}
                             >
                                 {t}
@@ -794,7 +793,7 @@ export function DailyReadingPage() {
                                             key={a.id}
                                             className="relative flex flex-col rounded-xl border border-slate-100/90 bg-white/90 p-3 shadow-sm"
                                         >
-                                            <span className="absolute right-2 top-2 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-800 ring-1 ring-teal-100">
+                                            <span className="absolute right-2 top-2 rounded-full bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 ring-1 ring-teal-100">
                                                 {DIFF_LABELS[a.difficulty]}
                                             </span>
                                             <p className="pr-16 text-sm font-semibold leading-snug text-slate-800">
@@ -805,12 +804,12 @@ export function DailyReadingPage() {
                                                     {preview}
                                                 </p>
                                             ) : null}
-                                            <p className="mt-2 text-[11px] text-slate-500">
+                                            <p className="mt-2 text-xs text-slate-500">
                                                 {labelForSource(a.sourceType)} ·{' '}
                                                 {new Date(a.fetchedAt).toLocaleDateString()}
                                             </p>
                                             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-50 pt-3">
-                                                <label className="flex items-center gap-1 text-[11px] text-slate-500">
+                                                <label className="flex items-center gap-1 text-xs text-slate-500">
                                                     难度
                                                     <select
                                                         className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
@@ -831,17 +830,13 @@ export function DailyReadingPage() {
                                                 </label>
                                                 <Button
                                                     type="button"
-                                                    size="sm"
-                                                    className="h-8"
                                                     onClick={() => setOpenId(a.id)}
                                                 >
                                                     阅读
                                                 </Button>
                                                 <Button
                                                     type="button"
-                                                    size="sm"
                                                     variant="ghost"
-                                                    className="h-8"
                                                     onClick={() => remove(a.id)}
                                                 >
                                                     删除

@@ -279,7 +279,7 @@ export function FlashcardReviewPage() {
             {snapshotDone.current && totalWords > 0 && currentIndex < totalWords && current && (
                 <section className="grid w-full max-w-6xl grid-cols-1 items-start gap-8 lg:grid-cols-12">
                     <div className="flex flex-col items-center lg:col-span-8">
-                        <div className="flex w-full min-h-[min(520px,70vh)] flex-col overflow-hidden rounded-[2.5rem] bg-stitch-surface-container-lowest shadow-[0_20px_50px_rgba(21,28,39,0.04)] md:flex-row">
+                        <div className="flex w-full min-h-[min(520px,70svh)] flex-col overflow-hidden rounded-[2.5rem] bg-stitch-surface-container-lowest shadow-[0_20px_50px_rgba(21,28,39,0.04)] md:flex-row">
                             <div className="relative h-64 shrink-0 overflow-hidden md:h-auto md:w-5/12">
                                 {current.images?.[0] ? (
                                     <img
@@ -295,7 +295,7 @@ export function FlashcardReviewPage() {
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                                 <div className="absolute bottom-6 left-6 text-white">
-                                    <span className="rounded-full border border-white/30 bg-white/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur-md">
+                                    <span className="rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
                                         Concept Visualization
                                     </span>
                                 </div>
@@ -351,7 +351,7 @@ export function FlashcardReviewPage() {
                             >
                                 <Frown className="h-7 w-7 text-[#ba1a1a]" strokeWidth={2} />
                                 <span>Unfamiliar</span>
-                                <span className="text-[10px] font-normal text-stitch-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100">
+                                <span className="text-xs font-normal text-stitch-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100">
                                     重新学习
                                 </span>
                             </button>
@@ -362,7 +362,7 @@ export function FlashcardReviewPage() {
                             >
                                 <Meh className="h-7 w-7 text-stitch-tertiary" strokeWidth={2} />
                                 <span>Learning</span>
-                                <span className="text-[10px] font-normal text-stitch-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100">
+                                <span className="text-xs font-normal text-stitch-on-surface-variant opacity-0 transition-opacity group-hover:opacity-100">
                                     次日再练
                                 </span>
                             </button>
@@ -373,7 +373,7 @@ export function FlashcardReviewPage() {
                             >
                                 <Smile className="h-7 w-7" strokeWidth={2} />
                                 <span>Know</span>
-                                <span className="text-[10px] font-normal text-white/70 opacity-0 transition-opacity group-hover:opacity-100">
+                                <span className="text-xs font-normal text-white/70 opacity-0 transition-opacity group-hover:opacity-100">
                                     掌握
                                 </span>
                             </button>
@@ -386,7 +386,7 @@ export function FlashcardReviewPage() {
                                 <h3 className="font-headline text-lg font-bold text-stitch-on-surface">
                                     Recently Mastered
                                 </h3>
-                                <span className="rounded-full bg-stitch-secondary-container px-2 py-1 text-[10px] font-bold text-stitch-on-secondary-container">
+                                <span className="rounded-full bg-stitch-secondary-container px-2 py-1 text-xs font-bold text-stitch-on-secondary-container">
                                     +{masteredTodayCount} Today
                                 </span>
                             </div>

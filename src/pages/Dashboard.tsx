@@ -64,7 +64,7 @@ function RecentWordCard({ w }: { w: WordBankItem }) {
     return (
         <div className="group rounded-xl border border-transparent bg-stitch-surface-container-lowest p-6 shadow-stitch-soft transition-colors hover:border-stitch-primary/10">
             <div className="mb-4 flex items-start justify-between">
-                <span className="rounded bg-stitch-secondary-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-stitch-on-secondary-container">
+                <span className="rounded bg-stitch-secondary-container px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-stitch-on-secondary-container">
                     Level {cefrFromWordLevel(w.level)}
                 </span>
                 <button
@@ -257,7 +257,7 @@ export function DashboardPage() {
                             <div key={cell.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                                 <span
                                     className={cn(
-                                        'text-[10px] font-bold uppercase text-stitch-on-surface-variant',
+                                        'text-xs font-bold uppercase text-stitch-on-surface-variant',
                                         cell.isToday && 'text-stitch-primary'
                                     )}
                                 >

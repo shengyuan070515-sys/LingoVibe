@@ -671,16 +671,16 @@ export function AiChatPage() {
                     <div className="min-w-[140px] max-w-[260px] overflow-hidden rounded-2xl border border-white/70 bg-white/85 shadow-2xl shadow-slate-900/15 backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.12] dark:bg-slate-900/75 dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.06)_inset] dark:backdrop-blur-2xl dark:backdrop-saturate-150">
                         <div className="p-3.5 space-y-2.5">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">已选</span>
+                                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">已选</span>
                                 <p className="text-xs font-semibold italic leading-snug text-slate-800 dark:text-slate-100">"{selectionBox.text}"</p>
                             </div>
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-white/10" />
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">翻译</span>
+                                <span className="text-xs font-medium text-indigo-500 dark:text-indigo-400">翻译</span>
                                 {selectionBox.isLoading ? (
                                     <div className="flex items-center gap-2 py-1">
                                         <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500">Translating…</span>
+                                        <span className="text-xs text-slate-400 dark:text-slate-500">Translating…</span>
                                     </div>
                                 ) : (
                                     <p className="text-xs font-medium leading-relaxed text-indigo-900/90 dark:text-indigo-100/90">
@@ -697,7 +697,7 @@ export function AiChatPage() {
                                 whileTap={isCompletingWord ? undefined : { scale: 0.985 }}
                                 transition={{ type: 'spring', stiffness: 520, damping: 32 }}
                                 className={cn(
-                                    'relative z-0 flex w-full items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                                    'relative z-0 flex w-full items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors',
                                     isCompletingWord
                                         ? 'cursor-not-allowed bg-slate-100/50 text-slate-300 dark:bg-slate-800/40 dark:text-slate-600'
                                         : 'bg-white/40 text-slate-600 hover:bg-indigo-50/80 hover:text-indigo-700 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300'
@@ -712,10 +712,10 @@ export function AiChatPage() {
                 </div>
             )}
 
-            <div className="relative flex h-[calc(100dvh-5.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface shadow-stitch-card md:h-[calc(100vh-8rem)] md:rounded-3xl">
+            <div className="relative flex h-[calc(100dvh-5.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-stitch-outline/15 bg-stitch-surface shadow-stitch-card md:h-[calc(100dvh-8rem)] md:rounded-3xl">
                 {/* 顶部模式切换 — segmented control */}
                 <div className="relative z-10 shrink-0 border-b border-stitch-outline/10 bg-stitch-surface-container-low/90 px-2 py-2 sm:px-4 sm:py-3 md:px-6">
-                    <div className="flex h-9 max-w-md rounded-full bg-slate-100 p-0.5 dark:bg-slate-800">
+                    <div className="flex h-11 max-w-md rounded-full bg-slate-100 p-0.5 dark:bg-slate-800">
                         {(
                             [
                                 { id: 'vocabulary' as const, label: '生词破冰', icon: BookOpen },
@@ -796,15 +796,15 @@ export function AiChatPage() {
                                     )}
                                 >
                                     <span className={cn(
-                                        "w-full truncate text-[13px] font-semibold tracking-tight",
+                                        "w-full truncate text-sm font-semibold tracking-tight",
                                         currentSessionId === session.id
                                             ? "text-indigo-950 dark:text-indigo-100"
                                             : "text-slate-700 dark:text-slate-300"
                                     )}>{session.title}</span>
-                                    <span className="mt-1 font-mono text-[10px] tabular-nums text-slate-400 dark:text-slate-500">{formatTimestamp(session.updatedAt)}</span>
+                                    <span className="mt-1 font-mono text-xs tabular-nums text-slate-400 dark:text-slate-500">{formatTimestamp(session.updatedAt)}</span>
                                 </button>
                                 <div className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white/80 text-slate-500 shadow-sm hover:text-slate-900 dark:bg-slate-800/80 dark:text-slate-400 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:text-slate-100" onClick={() => setActiveDropdown(activeDropdown === session.id ? null : session.id)}>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg bg-white/80 text-slate-500 shadow-sm hover:text-slate-900 dark:bg-slate-800/80 dark:text-slate-400 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] dark:hover:text-slate-100" onClick={() => setActiveDropdown(activeDropdown === session.id ? null : session.id)}>
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                     {activeDropdown === session.id && (
@@ -1116,7 +1116,7 @@ export function AiChatPage() {
                                         </motion.button>
                                     </div>
                                 </div>
-                                <p className="mt-3 text-center text-[10px] text-slate-400/60 dark:text-slate-500/50">
+                                <p className="mt-3 text-center text-xs text-slate-400/60 dark:text-slate-500/50">
                                     Enter 发送 · 麦克风英文听写
                                     {!speechSupported ? '（当前环境不支持语音识别）' : null}
                                 </p>

@@ -29,7 +29,7 @@ export function MasteryRadarChart({ scores, className }: MasteryRadarChartProps)
 
     return (
         <div className={cn('flex flex-col items-center gap-4', className)}>
-            <svg viewBox="0 0 240 240" className="h-64 w-64 max-w-full">
+            <svg viewBox="0 0 240 240" className="h-auto w-full max-w-[256px]">
                 {rings.map((t) => {
                     const ringPts = LABELS.map(({ angle }) => polar(cx, cy, R * t, angle));
                     const ringD = ringPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') + ' Z';
@@ -103,7 +103,7 @@ export function MasteryRadarChart({ scores, className }: MasteryRadarChartProps)
                     </div>
                 ))}
             </div>
-            <p className="max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
+            <p className="max-w-md text-center text-xs leading-relaxed text-muted-foreground">
                 分数由你在 LingoVibe 内的行为估算（阅读、查词、对话、复习等），用于激励坚持，并非标准化语言测评。
             </p>
         </div>

@@ -197,14 +197,14 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
                         {!speechSupported ? ' · 当前环境无语音识别' : null}
                     </p>
                 </div>
-                <span className="rounded-full bg-emerald-100/90 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                <span className="rounded-full bg-emerald-100/90 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                     Live
                 </span>
             </div>
 
             <div
                 ref={listRef}
-                className="max-h-[min(52vh,420px)] space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/40 to-white/30 px-4 py-4"
+                className="max-h-[min(52svh,420px)] space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/40 to-white/30 px-4 py-4"
             >
                 {messages.map((msg, index) => (
                     <div
@@ -239,7 +239,7 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
                                                   ? '正在加载中文译文'
                                                   : '查看本条中文译文'
                                         }
-                                        className="flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline disabled:opacity-60"
+                                        className="flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline disabled:opacity-60"
                                     >
                                         <Languages className="h-3.5 w-3.5" />
                                         {msg.isTranslating

@@ -73,7 +73,7 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                             )}
                                             {item.difficultyLabel && (
                                                 <span
-                                                    className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                                                    className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
                                                     title="词典判定的学习难度档位"
                                                 >
                                                     {item.difficultyLabel}
@@ -81,7 +81,7 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                             )}
                                             {item.isProfessional && (
                                                 <span
-                                                    className="rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700"
+                                                    className="rounded-full border border-amber-400/40 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
                                                     title="与文章主题相关的专业术语"
                                                 >
                                                     专业
@@ -96,7 +96,7 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7"
+                                            className="h-9 w-9"
                                             onClick={() => speak(item.word)}
                                             aria-label={`朗读 ${item.word}`}
                                         >
@@ -105,7 +105,7 @@ export function ReadingVocabCards({ items }: ReadingVocabCardsProps) {
                                         <Button
                                             variant={saved ? 'secondary' : 'ghost'}
                                             size="icon"
-                                            className="h-7 w-7"
+                                            className="h-9 w-9"
                                             onClick={() => handleAdd(item)}
                                             disabled={saved}
                                             aria-label={saved ? '已在词库' : '加入词库'}

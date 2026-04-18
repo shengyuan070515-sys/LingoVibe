@@ -52,7 +52,7 @@ function Stepper({ active }: { active: number }) {
                             <div className="text-center">
                                 <p
                                     className={cn(
-                                        'text-[11px] font-semibold uppercase tracking-[0.14em]',
+                                        'text-xs font-semibold uppercase tracking-[0.14em]',
                                         active === i ? 'text-teal-700' : 'text-slate-400'
                                     )}
                                 >
@@ -98,7 +98,7 @@ function DialogueCard({ line }: { line: DialogueLine }) {
                         : 'bg-teal-50/80 text-slate-700 ring-teal-100/80'
                 )}
             >
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
                     {line.roleLabel}
                 </p>
                 <p className="text-slate-600">
@@ -252,7 +252,7 @@ export function CourseDetail({ onBack }: { onBack: () => void }) {
                                 <div className="rounded-[1.75rem] bg-white/50 p-8 shadow-sm ring-1 ring-white/80 backdrop-blur-xl sm:p-10">
                                     <h2 className="text-lg font-semibold text-slate-800">Step 2 · 输出任务</h2>
                                     <div className="mt-6 rounded-2xl border border-dashed border-teal-200/80 bg-teal-50/40 px-5 py-5 backdrop-blur-sm">
-                                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-800/90">
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-800/90">
                                             Mission
                                         </p>
                                         <p className="mt-3 text-base font-medium leading-relaxed text-slate-700">
@@ -306,7 +306,7 @@ export function CourseDetail({ onBack }: { onBack: () => void }) {
                                             onLexiconProgress={handleLexiconProgress}
                                         />
                                     </div>
-                                    <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500 sm:text-left">
+                                    <p className="mt-4 text-center text-xs leading-relaxed text-slate-500 sm:text-left">
                                         对话由服务端 AI 代理生成，无需额外配置；语音仅在浏览器内识别为文字，不上传录音文件。
                                     </p>
                                 </div>
