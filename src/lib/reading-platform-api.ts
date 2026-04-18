@@ -10,9 +10,6 @@ export type SearchHit = { url: string; title: string; snippet: string };
 /** 搜索 Key 由服务端环境变量 TAVILY_API_KEY 提供，前端只传关键词 */
 export async function platformSearch(q: string): Promise<SearchHit[]> {
     const base = apiBase();
-    if (!base) {
-        throw new Error('未配置 VITE_READING_API_BASE：请部署 api/ 下函数并写入 .env');
-    }
     const r = await fetch(`${base}/api/reading-search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,9 +31,6 @@ export async function platformSearch(q: string): Promise<SearchHit[]> {
 
 export async function platformExtractMarkdown(url: string): Promise<string> {
     const base = apiBase();
-    if (!base) {
-        throw new Error('未配置 VITE_READING_API_BASE');
-    }
     const r = await fetch(`${base}/api/reading-extract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

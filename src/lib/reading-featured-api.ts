@@ -28,9 +28,6 @@ function apiBase(): string {
 
 export async function fetchFeaturedDaily(dateKey?: string): Promise<FeaturedBundle> {
     const base = apiBase();
-    if (!base) {
-        throw new Error('未配置 VITE_READING_API_BASE');
-    }
     const q = dateKey ? `?date=${encodeURIComponent(dateKey)}` : '';
     const r = await fetch(`${base}/api/reading-featured-daily${q}`);
     if (!r.ok) {

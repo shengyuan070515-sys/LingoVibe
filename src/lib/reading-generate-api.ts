@@ -40,9 +40,6 @@ export async function generateReadingArticle(input: {
     signal?: AbortSignal;
 }): Promise<GenerateResponse> {
     const base = apiBase();
-    if (!base) {
-        throw new Error('未配置 VITE_READING_API_BASE');
-    }
     const r = await fetch(`${base}/api/reading-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
