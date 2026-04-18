@@ -39,62 +39,58 @@ interface CacheSlot {
     loading: boolean;
 }
 
-interface CacheEntry {
-    translate?: CacheSlot;
-    grammar?: CacheSlot;
+type CacheKey = `${string}::${InsightTab}`;
+type Cache = Record<CacheKey, CacheSlot>;
+
+function slotKey(sentence: string, tab: InsightTab): CacheKey {
+    return `${sentence}::${tab}` as CacheKey;
 }
 
 export function SelectionInsightPanel(props: SelectionInsightPanelProps) {
     const { open, sentence, anchorRect, initialTab, loadTranslation, loadGrammar, onClose } = props;
     const [tab, setTab] = React.useState<InsightTab>(initialTab);
-    const [, force] = React.useReducer((x) => x + 1, 0);
-    const cacheRef = React.useRef<Map<string, CacheEntry>>(new Map());
+    const [cache, setCache] = React.useState<Cache>({});
+    const firedRef = React.useRef<Set<CacheKey>>(new Set());
+    const mountedRef = React.useRef(true);
     const isDesktop = useMediaIsDesktop();
     const panelRef = React.useRef<HTMLDivElement>(null);
 
-    const key = sentence;
+    React.useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
-    const entry = React.useCallback((): CacheEntry => {
-        let e = cacheRef.current.get(key);
-        if (!e) {
-            e = {};
-            cacheRef.current.set(key, e);
-        }
-        return e;
-    }, [key]);
+    // Whenever we switch tabs or the sentence changes, kick off the loader
+    // for that (sentence, tab) pair at most once.
+    React.useEffect(() => {
+        if (!open) return;
+        const key = slotKey(sentence, tab);
+        if (firedRef.current.has(key)) return;
+        firedRef.current.add(key);
 
-    const ensure = React.useCallback(
-        (t: InsightTab) => {
-            const e = entry();
-            const slot = t === 'translate' ? e.translate : e.grammar;
-            if (slot && (slot.loading || slot.data !== undefined || slot.error !== undefined)) return;
+        setCache((prev) => ({ ...prev, [key]: { loading: true } }));
 
-            const loader = t === 'translate' ? loadTranslation : loadGrammar;
-            const next: CacheSlot = { loading: true };
-            if (t === 'translate') e.translate = next;
-            else e.grammar = next;
-            force();
+        const loader = tab === 'translate' ? loadTranslation : loadGrammar;
+        loader(sentence)
+            .then((data) => {
+                if (!mountedRef.current) return;
+                setCache((c) => ({ ...c, [key]: { loading: false, data } }));
+            })
+            .catch((err) => {
+                if (!mountedRef.current) return;
+                const msg = err instanceof Error ? err.message : '加载失败';
+                setCache((c) => ({ ...c, [key]: { loading: false, error: msg } }));
+            });
+    }, [open, sentence, tab, loadGrammar, loadTranslation]);
 
-            loader(sentence)
-                .then((data) => {
-                    if (t === 'translate') e.translate = { loading: false, data };
-                    else e.grammar = { loading: false, data };
-                })
-                .catch((err) => {
-                    const msg = err instanceof Error ? err.message : '加载失败';
-                    if (t === 'translate') e.translate = { loading: false, error: msg };
-                    else e.grammar = { loading: false, error: msg };
-                })
-                .finally(() => force());
-        },
-        [entry, loadGrammar, loadTranslation, sentence]
-    );
-
+    // When the panel is (re)opened for a new invocation, sync the active tab
+    // to whatever the caller requested.
     React.useEffect(() => {
         if (!open) return;
         setTab(initialTab);
-        ensure(initialTab);
-    }, [open, initialTab, ensure, key]);
+    }, [open, initialTab, sentence]);
 
     React.useEffect(() => {
         if (!open) return;
@@ -118,8 +114,7 @@ export function SelectionInsightPanel(props: SelectionInsightPanelProps) {
 
     if (!open) return null;
 
-    const e = entry();
-    const active = tab === 'translate' ? e.translate : e.grammar;
+    const active = cache[slotKey(sentence, tab)];
 
     const floatingStyle: React.CSSProperties = (() => {
         if (!isDesktop || !anchorRect) return {};
@@ -141,10 +136,9 @@ export function SelectionInsightPanel(props: SelectionInsightPanelProps) {
             ref={panelRef}
             id="selection-insight-panel"
             className={cn(
-                'rounded-2xl border border-slate-200 bg-white/98 shadow-2xl backdrop-blur-sm',
-                isDesktop
-                    ? 'hidden md:flex md:flex-col'
-                    : 'fixed inset-x-0 bottom-0 z-[60] flex max-h-[70vh] flex-col rounded-b-none pb-[env(safe-area-inset-bottom,0px)] md:hidden'
+                'flex flex-col rounded-2xl border border-slate-200/80 bg-white shadow-xl',
+                !isDesktop &&
+                    'fixed inset-x-0 bottom-0 z-[60] max-h-[70vh] rounded-b-none pb-[env(safe-area-inset-bottom,0px)]'
             )}
             style={isDesktop ? floatingStyle : undefined}
             onMouseDown={(ev) => ev.stopPropagation()}
@@ -171,12 +165,10 @@ export function SelectionInsightPanel(props: SelectionInsightPanelProps) {
                 {(['translate', 'grammar'] as const).map((t) => (
                     <button
                         key={t}
+                        type="button"
                         role="tab"
                         aria-selected={tab === t}
-                        onClick={() => {
-                            setTab(t);
-                            ensure(t);
-                        }}
+                        onClick={() => setTab(t)}
                         className={cn(
                             'rounded-t-md border-b-2 px-3 py-1.5 text-xs font-medium transition-colors',
                             tab === t

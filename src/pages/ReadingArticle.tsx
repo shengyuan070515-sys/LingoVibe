@@ -91,7 +91,7 @@ function renderSegments(
                 <span
                     key={i}
                     data-term={seg.term}
-                    className={`${base} border-b border-dashed border-teal-500 hover:border-solid hover:bg-teal-50`}
+                    className={`${base} bg-teal-50 px-0.5 underline decoration-teal-500 decoration-dashed decoration-2 underline-offset-[3px] hover:bg-teal-100 hover:decoration-solid`}
                     onClick={(e) => handlers.onKeyWordClick(seg.term!, e)}
                 >
                     {seg.text}
@@ -102,7 +102,7 @@ function renderSegments(
             <span
                 key={i}
                 data-term={seg.term}
-                className={`${base} border-b border-dotted border-slate-400 hover:border-solid hover:bg-slate-100`}
+                className={`${base} bg-slate-100 px-0.5 underline decoration-slate-400 decoration-dotted decoration-2 underline-offset-[3px] hover:bg-slate-200 hover:decoration-solid`}
                 onClick={(e) => handlers.onSavedClick(seg.term!, e)}
             >
                 {seg.text}
@@ -750,6 +750,37 @@ export function ReadingArticleView({
                         ref={scrollRef}
                         className="rounded-2xl border border-slate-100 bg-white/80 p-5 shadow-sm select-text"
                     >
+                        {(phrasesList.length > 0 || keyWordsList.length > 0 || (showSavedHl && savedWordSet.size > 0)) && (
+                            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                                <span className="font-medium text-slate-400">图例</span>
+                                {phrasesList.length > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="inline-block h-3 w-4 rounded-sm bg-yellow-200/80" aria-hidden />
+                                        关键短语
+                                    </span>
+                                )}
+                                {keyWordsList.length > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                        <span
+                                            className="inline-block h-3 w-4 rounded-sm bg-teal-50"
+                                            style={{ borderBottom: '2px dashed rgb(20 184 166)' }}
+                                            aria-hidden
+                                        />
+                                        AI 精选生词
+                                    </span>
+                                )}
+                                {showSavedHl && savedWordSet.size > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                        <span
+                                            className="inline-block h-3 w-4 rounded-sm bg-slate-100"
+                                            style={{ borderBottom: '2px dotted rgb(148 163 184)' }}
+                                            aria-hidden
+                                        />
+                                        已收藏（点击查看卡片）
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         <div
                             className={cn(
                                 'prose prose-slate max-w-none',
