@@ -38,15 +38,26 @@ function storedDeepEqual<T>(prev: T, next: T): boolean {
     }
 }
 
-export function useLocalStorage<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-    const initialRef = useRef(initialValue);
-    initialRef.current = initialValue;
+/**
+ * `initialValue` 接受值或工厂函数。工厂仅在挂载首帧解析一次，避免昂贵的初始化
+ * 在每次 render 都被重跑（典型场景：AiChat 把 migrate 函数传进来）。
+ */
+export function useLocalStorage<T>(
+    key: string,
+    initialValue: T | (() => T)
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+    const initialRef = useRef<{ value: T } | null>(null);
+    if (initialRef.current === null) {
+        const resolved =
+            typeof initialValue === 'function' ? (initialValue as () => T)() : initialValue;
+        initialRef.current = { value: resolved };
+    }
 
-    const [value, setValue] = useState<T>(() => readStoredValue(key, initialValue));
+    const [value, setValue] = useState<T>(() => readStoredValue(key, initialRef.current!.value));
 
     const pullFromDisk = useCallback(() => {
         setValue((prev) => {
-            const next = readStoredValue(key, initialRef.current);
+            const next = readStoredValue(key, initialRef.current!.value);
             if (storedDeepEqual(prev, next)) return prev;
             return next;
         });

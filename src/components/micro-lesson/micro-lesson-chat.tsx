@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { recordChatMessage } from '@/store/learningAnalyticsStore';
-import { useDailyLoopStore, syncDailyLoopDate } from '@/store/dailyLoopStore';
 
 export type { LexiconProgressPayload };
 
@@ -56,7 +55,6 @@ type MicroLessonChatProps = {
 
 export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress }: MicroLessonChatProps) {
     const { toast } = useToast();
-    const markChatRoundDone = useDailyLoopStore((s) => s.markChatRoundDone);
 
     const [input, setInput] = React.useState('');
     const [isLoading, setIsLoading] = React.useState(false);
@@ -70,10 +68,6 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         const complete = isLexiconMissionComplete(coverage);
         onLexiconProgress?.({ coverage, complete });
     }, [messages, onLexiconProgress]);
-
-    React.useEffect(() => {
-        syncDailyLoopDate();
-    }, []);
 
     const scrollDown = React.useCallback(() => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -126,7 +120,8 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
                 showTranslation: false,
             };
             onMessagesChange((prev) => [...prev, assistantMessage]);
-            markChatRoundDone();
+            // 微课是独立练习场（A 方案）：不写「今日闭环 · 完成 1 轮 AI 对话」标记，
+            // 只让 recordChatMessage 自然增加 lifetime/活跃度计数。
         } catch (e) {
             console.error(e);
             const msg = e instanceof Error ? e.message : '连接失败，请稍后重试';

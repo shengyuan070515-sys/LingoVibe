@@ -9,57 +9,78 @@
 
 保持 UI 一致性：所有颜色、间距必须使用 Tailwind CSS 的标准类，不得在代码里写死复杂的 CSS。
 
-状态管理单一化：如果是跨页面的数据（比如单词学习进度），请统一检查项目里是否已经有了全局状态管理（如 Zustand 或 Context），不要在每个页面里单独定义。
+状态管理单一化：跨页面的数据（生词、阅读、闭环、活跃度）统一走 `src/store/*` 下的 Zustand store，不要再在页面里单独 `useLocalStorage` 同名 key。
 
 必须更新文档：每次修改代码后，请在本项目说明文档中记录你改了哪里，以及为什么要这么改。
 
-## 最新更新记录 (2026-03-28)
-### 决策纪要闭环（生词本主轴）
-- **改动位置**：`src/lib/srs-utils.ts`，`src/store/reviewLogStore.ts`，`src/store/dailyLoopStore.ts`，`src/store/wordBankStore.ts`，`src/pages/FlashcardReview.tsx`，`src/components/dashboard/dashboard-daily-loop.tsx`，`src/pages/Dashboard.tsx`，`src/App.tsx`，`src/pages/AiChat.tsx`，`src/pages/DailyPodcast.tsx`，`src/lib/ai-chat.ts`
-- **改动原因**：对齐项目内《决策纪要》：首页「今日闭环」、闪卡复习与 1/3/7 天 SRS 阶梯、待复习词注入对话开场、离线闪卡、复习日志、播客完成计入闭环。
+## 当前数据模型（五个 store · 单一事实源）
+
+| Store / Key | 作用 |
+|---|---|
+| `wordBankStore` — `lingovibe_global_wordbank` | 生词卡（word/sentence），含 SRS 字段 `level / interval / nextReviewDate / addedAt` |
+| `dailyLoopStore` — `lingovibe_daily_loop` | 当日三项闭环：`reviewQueueDone / chatRoundDone / readingDone`（按本地日历日重置） |
+| `reviewLogStore` — `lingovibe_review_log` | 闪卡自评流水（600 条上限），用于正确率统计 |
+| `learningAnalyticsStore` — `lingovibe_learning_analytics` | 每日活跃度热图 + lifetime 计数（chat/visual/reading/srs/wordsAdded） |
+| `readingLibraryStore` — `lingovibe_reading_library` | 文章库（精选 / 用户导入 / AI 生成） |
+
+## SRS 阶梯（7 档保守版）
+
+`src/lib/srs-utils.ts` 的 `INTERVAL_LADDER_DAYS` 为 `[1, 2, 4, 7, 14, 30, 60]`：
+
+- 全新单词（level=0）自评「会」→ 1 天后再见
+- 再自评「会」（level=1）→ 2 天；依次 4 / 7 / 14 / 30 / 60，封顶 60 天
+- 「不熟」→ level 回退 max(0, level-2)，1 天后再见
+- 「学习中」→ level 不动，间隔减半（最小 1 天）
+
+## 学习闭环（与「今日闭环」三项对齐）
+
+1. **复习队列**：FlashcardReview 通过 `selectDueWords` 取到期词；过完一轮或开页时无到期词均会 `markReviewQueueDone()`。
+2. **AI 对话**：Emma 主动开场会优先把当日待复习词注入 prompt（`splitDueWordsAndFiller`）。用户发出消息且 Emma 成功回复后 `markChatRoundDone()`。
+3. **每日阅读**：阅读文章滚到文末 + 累计前台停留达标后 `markReadingDone() + recordReadingSession()`。
+
+## 模块定位提示
+
+- 「情景微课」侧栏入口（`/courses`）是**独立练习场**：不写 `markChatRoundDone()` 也不与「今日闭环 · 完成 1 轮 AI 对话」联动；但内部对话仍走 `recordChatMessage()` 计入活跃度/lifetime。本模块通关产物是把目标词同步进生词本。
+- 「今日精选」「自选主题」AI 生成的文章默认 `addedToLibrary=false`，阅读时在文章顶部点「加入书库」才会留在书库。
+- 同一文章今日重复读完不会重复计分：`dailyLoopStore.tryMarkReadingArticleCompleted(articleId)` 当日首次返回 true 才会 `recordReadingSession`。
+
+## 时区口径
+
+- **客户端 streak / 活跃度热图 / 今日闭环**：按用户设备本地时区算「今天」（`src/lib/learning-analytics.ts` 的 `toLocalDateKey`），与手机日历保持一致。
+- **服务端「今日精选阅读」KV 缓存键**：按北京时间算「今天」（`src/lib/date-key-shanghai.ts` 的 `getDateKeyShanghai`），让全球客户端共享同一份日级 AI 缓存。
+- 两者各司其职，不要混用。
+
+## 最新更新记录
+
+### 2026-05-12 · 功能缺陷修复
+
+修复一轮真实数据 bug 与 UX 不一致：
+
+- **生词本超过 500 词时新词丢失**：`wordBankStore.partialize` 写错方向（`slice(-500)`）——因为 `addWord` 把新词 prepend 到数组开头，`slice(-500)` 反而留下最老的 500 条、把新加的丢了。改为 `slice(0, 500)` 并抽出 `partializeWordBankWords` 便于单测。
+- **阅读完成可被重复刷分**：`ReadingArticle` 的 `loggedRef` 在组件卸载后丢失，反复打开同一篇已完成文章会多次 `recordReadingSession`。给 `dailyLoopStore` 加 `readingCompletedArticleIds`（按日复位）与 `tryMarkReadingArticleCompleted(articleId)`，仅同日首次完成才计分；版本号升到 v3 并迁移老数据。
+- **微课与主闭环口径冲突**：依照 A 方案「独立练习场」，`MicroLessonChat` 移除 `markChatRoundDone()` 调用与 `useDailyLoopStore` 依赖；保留 `recordChatMessage()` 让练习量自然进入活跃度/lifetime 计数。
+- **AiChat 每次 render 都跑 migrate**：`useLocalStorage` 的 `initialValue` 改为 `T | (() => T)`，工厂仅在挂载首帧解析一次；AiChat 改为传函数引用 `migrateLegacyChatSessionsIfNeeded`。
+- **时区口径文档化**：之前 `getDateKeyShanghai` 看起来像死代码，其实只在服务端 `api/_lib/reading-featured-cache.ts` 用。补注释说明客户端走 local TZ、服务端走 Shanghai 的双口径。
+- **侧栏 / 课程页文案对齐 A 方案**：`学习路径 → 情景微课`；课程列表页加一行「独立练习场 · 不计入今日闭环三项」。
+
+### 2026-05-12 · 文档与 UX 一致性梳理
+- **改动位置**：`PROJECT_GUIDE.md`、`src/store/wordBankStore.ts`、`src/pages/Achievements.tsx`、`src/pages/Dashboard.tsx`、`src/pages/VisualDictionary.tsx`、`src/pages/AiChat.tsx`、`src/pages/ReadingArticle.tsx`
+- **改动原因**：审计发现文档（SRS 阶梯 / 已下线的播客模块）与代码脱节；多个收词入口对「重复词」的反馈不一致；首页双 KPI 缺说明。
 - **具体实现**：
-  - 自评「会」的间隔改为固定阶梯 1→3→7 天（替代原间隔倍增）；播客「完成本次复习」里掌握的词仍用 `updateWordProgress`，与闪卡共用同一套阶梯回写。
-  - 首页在快捷入口之上增加「今日闭环」三项（复习队列 / AI 对话 / 播客），与原有活跃度并行展示。
-  - 新增路由 `flashcard-review`：仅 `type === 'word'` 且已到期的词，英↔中闪卡，不依赖网络。
-  - `lingovibe_daily_loop` 按本地日历日重置三项完成标记；`lingovibe_review_log` 记录每次闪卡自评（便于以后调 SRS）。
-  - Emma 主动开场指令优先纳入最多 2 个今日到期词（F1b）。
-- **端侧一致（2026-03-28 补充）**：侧栏增加「闪卡复习」；首页快捷入口第一项为闪卡；生词本页提供同一闪卡按钮；手机底栏在闪卡页将「首页」视为选中，避免无高亮。数据仍仅存 `localStorage`，同设备手机/桌面浏览器互通，换设备需自行同步数据。
-- **API Key 持久化加固（2026-03-28）**：`use-local-storage.ts` 改为仅当 `getItem === null` 视为无记录；`JSON.parse` 失败时对字符串类 key 保留磁盘原文，避免误用空初值写回覆盖；`useLayoutEffect` 挂载时再拉盘一次；同页通过 `lingovibe-localstorage` 事件 + `storage` 多实例对齐。设置页在持久化值从外部更新时同步输入框；生词本 Key 直写 `localStorage` 后补发同步事件。
-- **AI 对话修复（2026-03-28）**：`useLocalStorage` 对对象型状态增加 `JSON.stringify` 深比较后再 `setState`，避免 `ai_chat_v2` 写入后自触发拉盘、引用恒变导致更新风暴与消息丢失；Emma 系统提示增加 Rule 8 约束 `[TRANSLATION]` 必须忠实对应 `[CONTENT]`；主对话请求增加 `temperature`、空响应与 HTTP 错误信息处理；按需翻译用原文指纹写回消息并加强翻译 prompt；列表 `key` 加入内容前缀减轻下标错位。
-- **播客正文（2026-03-28）**：逐词渲染恢复为原先 `inline-block` 结构以保证全文正常换行与显示；双击/点击收录后仅在 `requestAnimationFrame` 中 `getSelection().removeAllRanges()` 清除系统选区，减轻灰条与选中残留，不使用 `preventDefault` 与 `whitespace-pre` 分片，避免正文被裁切。
+  - 重写本文档，SRS 段落改为实际的 7 档阶梯，删除「Daily Context Pod / 播客日记」过期内容。
+  - `addWord` 返回值改为 `'added' | 'duplicate' | 'invalid'`，让调用方据此 toast。
+  - VisualDictionary / AiChat / ReadingArticle 在添加已收藏词时统一显示「已在生词本中」。
+  - Achievements 移除已无意义的 `id.startsWith('demo-')` 过滤。
+  - Dashboard 首页「今日目标 X/5 格」与「今日闭环」并行展示时，增加一行说明文案，避免用户把两套 KPI 误当成一套。
 
-## 最新更新记录 (2026-03-26)
-### 1. 全局状态与记忆引擎重构
-- **改动位置**：新建 `src/store/wordBankStore.ts`，重构 `AiChat.tsx`, `VisualDictionary.tsx`, `Favorites.tsx`, `DailyPodcast.tsx`
-- **改动原因**：之前存在两个分散的本地存储 (`word_bank` 和 `favorite_expressions`)，不利于全局数据流转。
-- **具体实现**：
-  - 引入 Zustand 统一状态管理。
-  - 升级数据结构，增加 `addedAt`, `nextReviewDate`, `interval`, `level` 字段以支持间隔重复（SRS）。
-  - 在 DailyPodcast 中实现 `getWordsForPodcast` 抽取算法和 `updateWordProgress` 复习进度回写。
+### 历史记录（仅做参考，部分模块已被替换）
 
-### 2. Daily Context Pod 模块深度升级
-- **改动位置**：`src/pages/DailyPodcast.tsx`
-- **改动原因**：大模型生成的故事存在“戏精”附体、词汇超纲、格式破坏以及缺乏学习反馈闭环的问题。
-- **具体实现**：
-  - **定制弹窗**：新增高颜值的蓝紫主题 `Podcast Preferences` 弹窗，支持选择主题(Theme)、风格(Tone)和目标难度(Target Level)。
-  - **Prompt 黑科技**：加入严苛的反戏精(Anti-Drama)规则、动态难度映射(A2-C2)，并强制返回包含 `english` 和 `chinese` 的双语 JSON 格式。
-  - **数据清洗**：增加正则过滤 `replace(/[*_]/g, '')` 彻底剔除 Markdown 格式污染。
-  - **一键翻译与收藏**：在主界面右上角新增『中英对照』切换按钮，并在故事文本旁提供 ⭐ 收藏至播客日记按钮。
-  - **互动打卡闭环**：底部单词胶囊支持点击变绿（Mastered 状态），点击『完成本次复习』按钮后，系统自动提升这些单词的熟练度并延长下次复习间隔。
+#### 2026-03-28 · 决策纪要闭环（生词本主轴）— 已部分被替换
+- 当时的「闪卡 1/3/7 天阶梯」已演进为上文的 7 档阶梯，请以 `src/lib/srs-utils.ts` 为准。
+- 当时的「播客完成计入闭环」模块（DailyPodcast）已于后续重构中**整体替换为「每日阅读」**（`/reading` 路由 + `DailyReading.tsx`）。`dailyLoopStore` v1→v2 migration 把旧 `podcastDone` 字段迁移为 `readingDone`。
+- 其余说明（生词本主轴、`use-local-storage` 持久化加固、AI 对话翻译规则）仍然有效。
 
-### 3. 播客会话缓存与日记本入口补全
-- **改动位置**：`src/pages/DailyPodcast.tsx`
-- **改动原因**：用户离开页面返回后播客内容丢失；收藏后缺少查看入口。
-- **具体实现**：
-  - **Session Persistence**：使用 `localStorage` 键 `currentPodcastSession` 缓存当前复习会话（中英文本、目标词、掌握状态、播放状态与生成配置），仅在『完成本次复习』时清空。
-  - **播客日记本 UI**：新增『📖 我的收藏』按钮，弹出模态展示 `saved_podcasts` 列表卡片（时间、英文高亮、中文对照、取消收藏）。
-
-### 4. 暂停真实大模型调用（节省额度）
-- **改动位置**：`src/pages/DailyPodcast.tsx`
-- **改动原因**：开发日记本 UI 与纯前端交互阶段，用户希望暂停真实 DeepSeek 请求以节省额度。
-- **具体实现**：增加 `PODCAST_USE_MOCK` 开关，开启时跳过 fetch 请求，改为注入一段中英双语 Mock 数据（最终 UI 确认后再接回真实 API）。
-
-### 5. 恢复真实大模型调用
-- **改动位置**：`src/pages/DailyPodcast.tsx`
-- **改动原因**：UI 已确认，恢复真实 API 请求以获取真实生成内容。
-- **具体实现**：关闭 `PODCAST_USE_MOCK`（设为 false），恢复走真实 fetch 请求链路。
+#### 2026-03-26 · 全局状态与记忆引擎重构 — 部分仍有效
+- 引入 Zustand 统一状态管理：仍是当前架构基础（见上文「当前数据模型」表）。
+- 数据结构 SRS 字段 `addedAt / nextReviewDate / interval / level`：仍在使用。
+- 「Daily Context Pod / 播客 Mock 切换」相关内容已随播客模块下线一并废弃，请忽略。

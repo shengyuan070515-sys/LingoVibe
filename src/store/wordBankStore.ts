@@ -8,6 +8,22 @@ import { useReviewLogStore } from '@/store/reviewLogStore';
 
 export type WordBankSortMode = 'added-desc' | 'added-asc' | 'alpha' | 'review-soon' | 'level-desc';
 
+/** addWord 调用结果：'added' 新收录、'duplicate' 已存在、'invalid' 空/非法输入 */
+export type AddWordResult = 'added' | 'duplicate' | 'invalid';
+
+/**
+ * 持久化时只保留「最新 500 条」生词，并裁掉 allDefinitions 与超过 1 张的配图。
+ * 之所以独立导出：便于单测验证 slice 方向（addWord prepend → slice(0, n) 保留新词）。
+ */
+export function partializeWordBankWords(words: WordBankItem[]): WordBankItem[] {
+    return words
+        .slice(0, 500)
+        .map(({ allDefinitions: _allDefinitions, images, ...rest }) => ({
+            ...rest,
+            images: images?.slice(0, 1),
+        }));
+}
+
 export interface WordBankItem {
     id: string; 
     word: string; 
@@ -31,7 +47,7 @@ export interface WordBankItem {
 
 interface WordBankState {
     words: WordBankItem[];
-    addWord: (payload: unknown) => Promise<void>;
+    addWord: (payload: unknown) => Promise<AddWordResult>;
     refreshMissingDetails: () => Promise<void>;
     updateWord: (id: string, patch: Partial<WordBankItem>) => void;
     removeWord: (id: string) => void;
@@ -109,13 +125,13 @@ export const useWordBankStore = create<WordBankState>()(
 
                 if (!targetWord) {
                     console.warn("[WordBankStore] 接收到了空数据，静默拦截", payload);
-                    return; // 不抛出Error，绝对不弹报错
+                    return 'invalid';
                 }
 
-                // 2. 查重：如果有，就不加了，也不报错
+                // 2. 查重：如果有，就不加了，告诉调用方它是重复词
                 const state = get();
                 if (state.words.some((w: WordBankItem) => w.word.toLowerCase() === targetWord.toLowerCase())) {
-                    return;
+                    return 'duplicate';
                 }
 
                 const now = Date.now();
@@ -199,6 +215,8 @@ export const useWordBankStore = create<WordBankState>()(
                         // 静默：无图时生词本卡片仍可用
                     }
                 }
+
+                return 'added';
             },
 
             refreshMissingDetails: async () => {
@@ -347,14 +365,7 @@ export const useWordBankStore = create<WordBankState>()(
             name: 'lingovibe_global_wordbank',
             version: 1,
             storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({
-                words: state.words
-                    .slice(-500)
-                    .map(({ allDefinitions, images, ...rest }: WordBankItem) => ({
-                        ...rest,
-                        images: images?.slice(0, 1),
-                    })),
-            }),
+            partialize: (state) => ({ words: partializeWordBankWords(state.words) }),
             merge: (persisted: any, current: any) => {
                 const persistedWords: WordBankItem[] = Array.isArray(persisted?.words) ? persisted.words : [];
                 const currentWords: WordBankItem[] = Array.isArray(current?.words) ? current.words : [];

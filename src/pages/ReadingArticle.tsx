@@ -230,10 +230,17 @@ export function ReadingArticleView({
     const onBrowseComplete = React.useCallback(() => {
         if (loggedRef.current) return;
         loggedRef.current = true;
-        useDailyLoopStore.getState().markReadingDone();
-        recordReadingSession();
-        toast('已完成本文浏览要求，今日阅读闭环已更新', 'success');
-    }, [toast]);
+        const firstToday = useDailyLoopStore
+            .getState()
+            .tryMarkReadingArticleCompleted(articleId);
+        if (firstToday) {
+            recordReadingSession();
+            toast('已完成本文浏览要求，今日阅读闭环已更新', 'success');
+        } else {
+            // 同一文章当日已计过分：闭环标记不变，静默不二次刷分
+            toast('本文今日已记过分，继续阅读不再重复计入', 'default');
+        }
+    }, [articleId, toast]);
 
     const { progressLabel } = useReadingBrowseComplete(scrollRef, displayBody, onBrowseComplete, {
         summaryMode,
@@ -456,7 +463,7 @@ export function ReadingArticleView({
                 return;
             }
         }
-        await addWord({
+        const result = await addWord({
             word: w,
             type: 'word',
             phonetic: card.phonetic,
@@ -466,14 +473,17 @@ export function ReadingArticleView({
             exampleTranslation: card.exampleZh,
             context: articleContextLabel,
         });
-        toast('已加入生词本', 'success');
+        toast(
+            result === 'duplicate' ? `「${w}」已在生词本中` : '已加入生词本',
+            result === 'duplicate' ? 'default' : 'success'
+        );
     };
 
     async function handleWordCardAdd(data: ReadingWordCardData) {
         const w = wordCardWord?.trim();
         if (!w) return;
         wordCardCache.current.set(w.toLowerCase(), data);
-        await addWord({
+        const result = await addWord({
             word: w,
             type: 'word',
             phonetic: data.phonetic,
@@ -483,7 +493,10 @@ export function ReadingArticleView({
             exampleTranslation: data.exampleZh,
             context: articleContextLabel,
         });
-        toast('已加入生词本', 'success');
+        toast(
+            result === 'duplicate' ? `「${w}」已在生词本中` : '已加入生词本',
+            result === 'duplicate' ? 'default' : 'success'
+        );
         setWordCardWord(null);
     }
 

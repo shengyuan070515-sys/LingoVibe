@@ -97,9 +97,10 @@ export function AiChatPage() {
     React.useEffect(() => {
         syncDailyLoopDate();
     }, []);
+    // 传函数引用而非调用结果，避免每次 render 都跑 migrate + localStorage I/O
     const [persisted, setPersisted] = useLocalStorage<AiChatPersistedState>(
         'ai_chat_v2',
-        migrateLegacyChatSessionsIfNeeded()
+        migrateLegacyChatSessionsIfNeeded
     );
 
     const chatMode = persisted.chatMode;
@@ -635,7 +636,7 @@ export function AiChatPage() {
 
         const aiInfo = await completeWordInfo(text, context);
 
-        await addWord({
+        const result = await addWord({
             word: text,
             type: text.split(/\s+/).length <= 3 ? 'word' : 'sentence',
             context: context.substring(0, 200),
@@ -644,8 +645,13 @@ export function AiChatPage() {
             pos: aiInfo?.pos || 'unknown',
             exampleSentence: aiInfo?.example || '',
         });
-        toast(`已添加到生词本${text.split(/\s+/).length <= 3 ? '单词' : '句子'}: ${text}`, "success");
-        setWordSaveBurstKey((k) => k + 1);
+        const kind = text.split(/\s+/).length <= 3 ? '单词' : '句子';
+        if (result === 'duplicate') {
+            toast(`「${text}」已在生词本中`, 'default');
+        } else if (result === 'added') {
+            toast(`已添加到生词本${kind}: ${text}`, 'success');
+            setWordSaveBurstKey((k) => k + 1);
+        }
 
         setIsCompletingWord(false);
     };

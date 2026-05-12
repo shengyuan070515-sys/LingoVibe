@@ -209,6 +209,9 @@ export function DashboardPage() {
                                 {dailyCompleted} / {dailyTotal}
                             </div>
                             <div className="text-sm font-medium text-stitch-on-surface-variant">活跃度格子（每 +4 点亮 1 格）</div>
+                            <p className="pt-1 text-xs leading-relaxed text-stitch-on-surface-variant/80">
+                                按行为加权累计；与下方「今日闭环 · 三件事」并行计分。
+                            </p>
                         </div>
                         <button
                             type="button"

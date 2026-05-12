@@ -19,9 +19,12 @@ export function CoursesPage() {
                 }}
             />
             <header className="mb-12 text-center sm:mb-16">
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-800 sm:text-3xl">我的课程</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-800 sm:text-3xl">情景微课</h1>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
                     以「可理解输入 → 可控输出 → 回顾巩固」组织每一节微课，告别冗长视频列表。
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+                    独立练习场 · 通关后目标词可一键同步到生词本；本模块不计入首页「今日闭环」三项。
                 </p>
             </header>
 

@@ -27,7 +27,7 @@ vi.mock('@/store/reviewLogStore', () => ({
 }));
 
 // 在 mock 之后再 import 被测模块，确保 mock 生效
-import { useWordBankStore } from './wordBankStore';
+import { useWordBankStore, partializeWordBankWords } from './wordBankStore';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -288,6 +288,32 @@ describe('wordBankStore.removeInvalidWords', () => {
         const removed = useWordBankStore.getState().removeInvalidWords();
         expect(removed).toBe(3);
         expect(useWordBankStore.getState().words).toHaveLength(1);
+    });
+});
+
+describe('wordBankStore persist partialize · 保留最新而非最老', () => {
+    beforeEach(() => resetStore());
+
+    it('保留最新 500 条（drop the oldest）', () => {
+        // 按 addWord 约定：新词在前。unshift 模拟"逐个添加"。
+        const total = 501;
+        const words: WordBankItem[] = [];
+        for (let i = 0; i < total; i++) {
+            words.unshift(makeItem({ id: `id-${i}`, word: `word-${i}`, addedAt: i + 1 }));
+        }
+        // 期望布局：words[0] = id-500（最新），words[500] = id-0（最老）
+        const sliced = partializeWordBankWords(words);
+        expect(sliced).toHaveLength(500);
+        expect(sliced[0]!.id).toBe(`id-${total - 1}`);
+        expect(sliced.some((w) => w.id === 'id-0')).toBe(false);
+    });
+
+    it('少于 500 条时全部保留', () => {
+        const words = [
+            makeItem({ id: 'a', word: 'a' }),
+            makeItem({ id: 'b', word: 'b' }),
+        ];
+        expect(partializeWordBankWords(words)).toHaveLength(2);
     });
 });
 

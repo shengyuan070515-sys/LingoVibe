@@ -1,4 +1,10 @@
-/** Local date key YYYY-MM-DD (user's calendar day). */
+/**
+ * Local date key YYYY-MM-DD (user's calendar day).
+ *
+ * 设计口径：客户端侧的 streak / 热图 / 今日闭环按「用户设备本地时区」算今天，
+ * 让显示与手机日历保持一致；服务端的「今日精选阅读」KV 缓存走北京时间
+ * （见 `date-key-shanghai.ts`），让全球用户共享同一份日级 AI 缓存。
+ */
 export function toLocalDateKey(ts: number | Date): string {
     const d = typeof ts === 'number' ? new Date(ts) : ts;
     const y = d.getFullYear();

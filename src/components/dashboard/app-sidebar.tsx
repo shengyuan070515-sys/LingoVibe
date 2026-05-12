@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 
 const menuItems: { path: string; icon: React.ElementType; label: string }[] = [
     { path: '/', icon: Home, label: '首页' },
-    { path: '/courses', icon: GraduationCap, label: '学习路径' },
+    { path: '/courses', icon: GraduationCap, label: '情景微课' },
     { path: '/wordbank', icon: Book, label: '生词本' },
     { path: '/flashcard', icon: Layers, label: '闪卡复习' },
     { path: '/stats', icon: BarChart3, label: '学习统计' },

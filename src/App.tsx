@@ -56,7 +56,7 @@ class ErrorBoundary extends React.Component<
 const routeTitles: Record<string, string> = {
   '/': '首页',
   '/chat': 'AI 对话',
-  '/courses': '我的课程',
+  '/courses': '情景微课',
   '/wordbank': '我的生词本',
   '/achievements': '成就与奖励',
   '/stats': '学习统计',

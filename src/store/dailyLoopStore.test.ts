@@ -14,6 +14,7 @@ function resetStore(dateString: string) {
         reviewQueueDone: false,
         chatRoundDone: false,
         readingDone: false,
+        readingCompletedArticleIds: [],
     });
 }
 
@@ -47,6 +48,46 @@ describe('dailyLoopStore · 同一天内的标记', () => {
         s.markChatRoundDone();
         s.markChatRoundDone();
         expect(useDailyLoopStore.getState().chatRoundDone).toBe(true);
+    });
+});
+
+describe('dailyLoopStore · 阅读完成去重', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        resetStore('2026-04-16T10:00:00');
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('同篇文章今日仅首次返回 true', () => {
+        const s = useDailyLoopStore.getState();
+        expect(s.tryMarkReadingArticleCompleted('article-A')).toBe(true);
+        expect(useDailyLoopStore.getState().readingDone).toBe(true);
+        expect(useDailyLoopStore.getState().readingCompletedArticleIds).toEqual(['article-A']);
+
+        expect(useDailyLoopStore.getState().tryMarkReadingArticleCompleted('article-A')).toBe(false);
+    });
+
+    it('不同文章独立计数；空 id 直接返回 false', () => {
+        const s = useDailyLoopStore.getState();
+        expect(s.tryMarkReadingArticleCompleted('article-A')).toBe(true);
+        expect(useDailyLoopStore.getState().tryMarkReadingArticleCompleted('article-B')).toBe(true);
+        expect(useDailyLoopStore.getState().readingCompletedArticleIds).toEqual([
+            'article-A',
+            'article-B',
+        ]);
+        expect(useDailyLoopStore.getState().tryMarkReadingArticleCompleted('')).toBe(false);
+    });
+
+    it('跨日后已完成列表清零，新一天同一文章可再计一次', () => {
+        const s = useDailyLoopStore.getState();
+        expect(s.tryMarkReadingArticleCompleted('article-A')).toBe(true);
+        expect(useDailyLoopStore.getState().tryMarkReadingArticleCompleted('article-A')).toBe(false);
+
+        setNowTo('2026-04-17T08:00:00');
+        expect(useDailyLoopStore.getState().tryMarkReadingArticleCompleted('article-A')).toBe(true);
+        expect(useDailyLoopStore.getState().readingCompletedArticleIds).toEqual(['article-A']);
     });
 });
 

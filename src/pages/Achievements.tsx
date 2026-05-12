@@ -119,7 +119,7 @@ export function AchievementsPage() {
     );
 
     const ctx = {
-        wordCount: words.filter((w) => !w.id.startsWith('demo-')).length,
+        wordCount: words.length,
         streak,
         activeDays,
         life: lifetime,

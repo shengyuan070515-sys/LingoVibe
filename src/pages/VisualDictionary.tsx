@@ -60,13 +60,9 @@ export function VisualDictionaryPage() {
         [words],
     );
 
-    const handleAddCurrentToWordBank = React.useCallback(() => {
+    const handleAddCurrentToWordBank = React.useCallback(async () => {
         if (!currentEntry) return;
-        if (words.some((w) => w.type === 'word' && w.word.toLowerCase() === currentEntry.word.toLowerCase())) {
-            toast(`"${currentEntry.word}" 已在生词本中`, 'default');
-            return;
-        }
-        void addWord({
+        const result = await addWord({
             word: currentEntry.word,
             type: 'word',
             translation: currentEntry.translation || '',
@@ -75,8 +71,12 @@ export function VisualDictionaryPage() {
             images: currentEntry.images,
             context: 'Visual Dictionary',
         });
-        toast(`"${currentEntry.word}" 已添加到生词本`, 'success');
-    }, [currentEntry, words, addWord, toast]);
+        if (result === 'duplicate') {
+            toast(`「${currentEntry.word}」已在生词本中`, 'default');
+        } else if (result === 'added') {
+            toast(`「${currentEntry.word}」已添加到生词本`, 'success');
+        }
+    }, [currentEntry, addWord, toast]);
 
     const addToSearchHistory = React.useCallback((q: string) => {
         const newItem: SearchHistoryItem = {
@@ -403,7 +403,7 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
                                                             type="button"
                                                             size="sm"
                                                             variant={isCurrentInWordBank ? 'outline' : 'default'}
-                                                            onClick={handleAddCurrentToWordBank}
+                                                            onClick={() => void handleAddCurrentToWordBank()}
                                                             disabled={isCurrentInWordBank}
                                                             className={cn(
                                                                 'h-10 gap-1.5 rounded-xl px-4 font-semibold',
