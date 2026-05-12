@@ -167,7 +167,17 @@ Format: {"definition": "...", "synonyms": ["...", "...", "..."], "color": "..."}
             recordVisualLookup();
         } catch (error) {
             console.error(error);
-            toast('查词失败，请检查网络连接后重试。', 'error');
+            // 把真实错误透传给用户，避免「请检查网络连接」这种把后端错误（403 来源未授权 /
+            // 503 未配置 Key / 429 限流）伪装成网络问题的误导。
+            const baseMsg =
+                error instanceof Error && error.message ? error.message : '查词失败';
+            const status = (error as { status?: number }).status;
+            let hint = '';
+            if (status === 403) hint = '（当前域名未在后端白名单中）';
+            else if (status === 401) hint = '（签名密钥未配置或不匹配）';
+            else if (status === 429) hint = '（请求过于频繁，请稍后重试）';
+            else if (status === 503) hint = '（后端 AI 服务未配置）';
+            toast(`${baseMsg}${hint}`, 'error');
         } finally {
             setIsLoading(false);
         }
