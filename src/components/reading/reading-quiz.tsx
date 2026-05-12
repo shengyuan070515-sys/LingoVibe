@@ -11,7 +11,16 @@ interface ReadingQuizProps {
 
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
 
-export function ReadingQuiz({ items }: ReadingQuizProps) {
+export function ReadingQuiz({ items: rawItems }: ReadingQuizProps) {
+    // 防御已落盘的脏数据：答案必须是 A/B/C/D，4 个选项，题目非空；否则丢弃整道题
+    const items = useMemo(
+        () =>
+            (rawItems ?? []).filter(
+                (q) => q && q.question && q.options?.length === 4 && /^[A-D]$/.test(q.answer ?? '')
+            ),
+        [rawItems]
+    );
+
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [submitted, setSubmitted] = useState(false);
 
@@ -20,7 +29,7 @@ export function ReadingQuiz({ items }: ReadingQuizProps) {
         return items.reduce((acc, q, idx) => (answers[idx] === q.answer ? acc + 1 : acc), 0);
     }, [submitted, answers, items]);
 
-    if (!items || items.length === 0) return null;
+    if (items.length === 0) return null;
 
     const allAnswered = items.every((_, idx) => !!answers[idx]);
 

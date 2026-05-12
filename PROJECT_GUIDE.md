@@ -52,6 +52,11 @@
 
 ## 最新更新记录
 
+### 2026-05-12 · 第三轮缺陷修复（heatmap + quiz）
+
+- **ActivityHeatmap 行标签错位**：`buildHeatmapGrid` 之前 `start` 是「今日往前 97 天」，未对齐到 Sunday，导致 row 0 不一定是 Sunday，左侧「日 / 六」标签骗人。改为从「本周六」往回数完整 14 周，row 0 严格对应 `Date.getDay() === 0`；今日之后的未来格保持 null。补 4 条单测。
+- **Quiz 无效答案静默假装 A 是对的**：`reading-article-generate.ts` 原先用 `/^[A-D]$/.test(answer) ? answer : 'A'` 兜底——AI 偶尔返回非 A-D 格式（如返回选项文本）时会把第一选项当作正确答案，用户做对反而被判错。改为返回空字符串并 filter 丢弃整道坏题；前端 `ReadingQuiz` 同步加防御性 filter，处理已落盘的脏数据。
+
 ### 2026-05-12 · 第二轮缺陷修复
 
 - **AI 对话取消机制**：`callAiProxy` 新增 `options.signal`，`fetchEmmaChatCompletion / fetchProactiveOpening / fetchEnglishToChineseTranslation` 全部支持 `signal` 参数。AiChat / MicroLessonChat 在组件 unmount、切换 chat mode、开始下一次发送时 abort 上一次请求，避免离开页面后还在等待。

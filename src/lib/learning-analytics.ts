@@ -59,14 +59,23 @@ export interface HeatmapDay {
     level: 0 | 1 | 2 | 3 | 4;
 }
 
-/** Last `weeks` weeks, columns = weeks, rows = weekday index 0–6 from `start` day. */
+/**
+ * Last `weeks` weeks, columns = weeks, rows = weekday (row 0 = Sunday, row 6 = Saturday).
+ *
+ * 行索引严格对应 `Date.getDay()`，因此 ActivityHeatmap 的「日 / 六」标签是准确的。
+ * 网格从「本周六」往回数 weeks 个完整周，本周内未到的「未来日」单元格为 null。
+ */
 export function buildHeatmapGrid(
     dailyActivity: Record<string, number>,
     weeks = 14
 ): { grid: (HeatmapDay | null)[][] } {
-    const end = new Date();
-    end.setHours(0, 0, 0, 0);
-    const start = new Date(end);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Saturday of this week（若今天就是 Saturday 则不变）
+    const lastDay = new Date(today);
+    lastDay.setDate(lastDay.getDate() + (6 - today.getDay()));
+    // Sunday of the (weeks-1) weeks ago — 整段范围恰好 weeks*7 天，row 0 = Sunday
+    const start = new Date(lastDay);
     start.setDate(start.getDate() - (weeks * 7 - 1));
 
     const byDate: Record<string, number> = { ...dailyActivity };
@@ -78,7 +87,8 @@ export function buildHeatmapGrid(
         for (let dow = 0; dow < 7; dow++) {
             const d = new Date(start);
             d.setDate(d.getDate() + w * 7 + dow);
-            if (d > end) continue;
+            // 未来日（例如今天是周三，本列周四~周六）保持为 null
+            if (d > today) continue;
 
             const key = toLocalDateKey(d.getTime());
             const count = byDate[key] ?? 0;

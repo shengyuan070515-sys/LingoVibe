@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { computeLearningStreak, toLocalDateKey } from './learning-analytics';
+import { buildHeatmapGrid, computeLearningStreak, toLocalDateKey } from './learning-analytics';
 
 // 辅助：基于 "今天" 生成 N 天前的 key
 function keyDaysAgo(n: number): string {
@@ -78,5 +78,51 @@ describe('computeLearningStreak · GitHub 风格连续天数', () => {
         const daily: Record<string, number> = {};
         for (let i = 0; i < 7; i++) daily[keyDaysAgo(i)] = 1;
         expect(computeLearningStreak(daily)).toBe(7);
+    });
+});
+
+describe('buildHeatmapGrid · 行索引严格对应 weekday', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        // 周三（getDay() === 3）— 用于验证行对齐与未来格留空
+        vi.setSystemTime(new Date('2026-05-13T10:00:00'));
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('row 0 上的所有非空 cell 都是 Sunday（getDay() === 0）', () => {
+        const { grid } = buildHeatmapGrid({}, 14);
+        for (const cell of grid[0]!) {
+            if (!cell) continue;
+            const d = new Date(`${cell.date}T00:00:00`);
+            expect(d.getDay()).toBe(0);
+        }
+    });
+
+    it('row 6 上的所有非空 cell 都是 Saturday（getDay() === 6）', () => {
+        const { grid } = buildHeatmapGrid({}, 14);
+        for (const cell of grid[6]!) {
+            if (!cell) continue;
+            const d = new Date(`${cell.date}T00:00:00`);
+            expect(d.getDay()).toBe(6);
+        }
+    });
+
+    it('今天之后的「未来日」位置保持为 null（不会被当成 0 加权）', () => {
+        const { grid } = buildHeatmapGrid({}, 14);
+        // 今天周三 → 本周（最后一列）周四(row 4) 周五(row 5) 周六(row 6) 都该是 null
+        const lastCol = 13;
+        expect(grid[4]![lastCol]).toBeNull();
+        expect(grid[5]![lastCol]).toBeNull();
+        expect(grid[6]![lastCol]).toBeNull();
+        // 周一/二/三（本周内已过去的）应有 cell
+        expect(grid[1]![lastCol]).not.toBeNull();
+        expect(grid[3]![lastCol]).not.toBeNull();
+    });
+
+    it('weeks 列数严格匹配传入值', () => {
+        expect(buildHeatmapGrid({}, 4).grid[0]).toHaveLength(4);
+        expect(buildHeatmapGrid({}, 20).grid[0]).toHaveLength(20);
     });
 });

@@ -177,14 +177,16 @@ function parseCoreJson(raw: string): ArticleCore {
             return {
                 question: asString(o.question),
                 options,
-                answer: /^[A-D]$/.test(answer) ? answer : 'A',
+                // 不再用「假装是 A」的兜底——AI 偶尔返回非 A-D 格式时静默说 A 是对的，
+                // 会让用户做对也判错。直接置空，由下方 filter 整道题丢弃。
+                answer: /^[A-D]$/.test(answer) ? answer : '',
                 explanationZh:
                     asString(o.explanationZh) ||
                     asString(o.explanation_zh) ||
                     asString(o.explanation),
             };
         })
-        .filter((q) => q.question && q.options.length === 4);
+        .filter((q) => q.question && q.options.length === 4 && q.answer);
 
     const keyPhrases = sanitizeKeyPhrases(obj.keyPhrases, body);
 
@@ -354,14 +356,16 @@ function parseLegacyJson(raw: string, difficulty: AiDifficulty): AiGeneratedArti
             return {
                 question: asString(o.question),
                 options,
-                answer: /^[A-D]$/.test(answer) ? answer : 'A',
+                // 不再用「假装是 A」的兜底——AI 偶尔返回非 A-D 格式时静默说 A 是对的，
+                // 会让用户做对也判错。直接置空，由下方 filter 整道题丢弃。
+                answer: /^[A-D]$/.test(answer) ? answer : '',
                 explanationZh:
                     asString(o.explanationZh) ||
                     asString(o.explanation_zh) ||
                     asString(o.explanation),
             };
         })
-        .filter((q) => q.question && q.options.length === 4);
+        .filter((q) => q.question && q.options.length === 4 && q.answer);
 
     const keyPhrases = sanitizeKeyPhrases(obj.keyPhrases, body);
 
