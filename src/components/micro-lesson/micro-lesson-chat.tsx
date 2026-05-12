@@ -62,6 +62,10 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
     const messagesRef = React.useRef(messages);
     messagesRef.current = messages;
 
+    // 组件 unmount 时取消在飞的 Emma 调用，避免离开微课页后还在等待
+    const sendAbortRef = React.useRef<AbortController | null>(null);
+    React.useEffect(() => () => sendAbortRef.current?.abort(), []);
+
     React.useEffect(() => {
         const userTexts = messages.filter((m) => m.role === 'user').map((m) => m.content);
         const coverage = evaluateLexiconCoverage(userTexts);
@@ -101,12 +105,18 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
         setIsLoading(true);
         recordChatMessage();
 
+        sendAbortRef.current?.abort();
+        const controller = new AbortController();
+        sendAbortRef.current = controller;
+
         try {
             const payload = next.map((m) => ({ role: m.role, content: m.content }));
             const { correction, content, translation } = await fetchEmmaChatCompletion(
                 emmaCoffeeShopBaristaPrompt,
-                payload
+                payload,
+                controller.signal
             );
+            if (controller.signal.aborted) return;
             const assistantMessage: Message = {
                 role: 'assistant',
                 content: assistantBubbleEnglish({
@@ -123,11 +133,12 @@ export function MicroLessonChat({ messages, onMessagesChange, onLexiconProgress 
             // 微课是独立练习场（A 方案）：不写「今日闭环 · 完成 1 轮 AI 对话」标记，
             // 只让 recordChatMessage 自然增加 lifetime/活跃度计数。
         } catch (e) {
+            if (controller.signal.aborted) return;
             console.error(e);
             const msg = e instanceof Error ? e.message : '连接失败，请稍后重试';
             toast(msg, 'error');
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) setIsLoading(false);
         }
     };
 

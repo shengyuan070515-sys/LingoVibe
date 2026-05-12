@@ -118,4 +118,14 @@ describe('callAiProxy', () => {
         expect(init.headers['x-lv-timestamp']).toMatch(/^\d+$/);
         expect(init.headers['x-lv-signature']).toMatch(/^[0-9a-f]{64}$/);
     });
+
+    it('forwards AbortSignal to fetch so callers can cancel in-flight requests', async () => {
+        const mock = mockFetchOk();
+        const controller = new AbortController();
+
+        await callAiProxy({ prompt: 'hi' }, { signal: controller.signal });
+
+        const [, init] = mock.mock.calls[0]!;
+        expect(init.signal).toBe(controller.signal);
+    });
 });

@@ -52,6 +52,13 @@
 
 ## 最新更新记录
 
+### 2026-05-12 · 第二轮缺陷修复
+
+- **AI 对话取消机制**：`callAiProxy` 新增 `options.signal`，`fetchEmmaChatCompletion / fetchProactiveOpening / fetchEnglishToChineseTranslation` 全部支持 `signal` 参数。AiChat / MicroLessonChat 在组件 unmount、切换 chat mode、开始下一次发送时 abort 上一次请求，避免离开页面后还在等待。
+- **`ai_chat_v2` 体积封顶**：`capChatState` 给每模式 30 个 session、每 session 200 条消息封顶，按 `updatedAt` 倒序保留新的；当前活跃 session 强制保留。`migrateLegacyChatSessionsIfNeeded` 加载时应用一次；`AiChat` 包装 `setPersisted` 在每次写入前再应用一次。
+- **删除死代码**：`src/lib/pronunciation-assessment.ts`（200+ 行未被任何文件 import 的发音评估实现）整文件移除。
+- **Achievements 词汇成就只算 `type='word'`**：原先把句子也算入"开卷有益 / 词海拾贝 / 词汇猎人"，与文案「词」不符。
+
 ### 2026-05-12 · 功能缺陷修复
 
 修复一轮真实数据 bug 与 UX 不一致：

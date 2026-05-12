@@ -119,7 +119,9 @@ export function AchievementsPage() {
     );
 
     const ctx = {
-        wordCount: words.length,
+        // 「开卷有益 / 词海拾贝 / 词汇猎人」文案均以「词」为单位，仅统计单词条目；
+        // 句子类条目不参与单词成就计数。
+        wordCount: words.filter((w) => w.type === 'word').length,
         streak,
         activeDays,
         life: lifetime,

@@ -99,6 +99,56 @@ function defaultPersistedState(): AiChatPersistedState {
     };
 }
 
+/**
+ * 持久化封顶常量。`ai_chat_v2` 以 JSON 整体写入 localStorage（5MB 上限）。
+ * 一个 session 200 条消息、每模式 30 个 session 大致是单模式 < 1MB 的安全余量。
+ */
+export const MAX_SESSIONS_PER_MODE = 30;
+export const MAX_MESSAGES_PER_SESSION = 200;
+
+/**
+ * 修剪一个模式的 session 列表，确保：
+ *   - 每个 session 的 messages 不超过 MAX_MESSAGES_PER_SESSION（保留最近的）；
+ *   - 同模式 session 数不超过 MAX_SESSIONS_PER_MODE（按 updatedAt 倒序保留新的）；
+ *   - 当前活跃 session 永远保留，即使它不在 top N 中（避免「切到旧会话发消息后被丢弃」）。
+ */
+function capSessionList(sessions: Session[], currentId: string | null): Session[] {
+    const needsMsgTrim = sessions.some((s) => s.messages.length > MAX_MESSAGES_PER_SESSION);
+    const needsSessionTrim = sessions.length > MAX_SESSIONS_PER_MODE;
+    if (!needsMsgTrim && !needsSessionTrim) return sessions;
+
+    const trimmed = needsMsgTrim
+        ? sessions.map((s) =>
+              s.messages.length > MAX_MESSAGES_PER_SESSION
+                  ? { ...s, messages: s.messages.slice(-MAX_MESSAGES_PER_SESSION) }
+                  : s
+          )
+        : sessions;
+    if (!needsSessionTrim) return trimmed;
+
+    const sorted = [...trimmed].sort((a, b) => b.updatedAt - a.updatedAt);
+    const kept = sorted.slice(0, MAX_SESSIONS_PER_MODE);
+    if (currentId && !kept.some((s) => s.id === currentId)) {
+        const current = trimmed.find((s) => s.id === currentId);
+        if (current) kept[kept.length - 1] = current;
+    }
+    return kept;
+}
+
+/** 对整体 AiChatPersistedState 应用 cap，调用方应在每次落盘前调用。 */
+export function capChatState(state: AiChatPersistedState): AiChatPersistedState {
+    const modes: ChatMode[] = ['vocabulary', 'casual', 'surprise'];
+    const sessionsByMode = { ...state.sessionsByMode };
+    let changed = false;
+    for (const mode of modes) {
+        const before = state.sessionsByMode[mode];
+        const after = capSessionList(before, state.currentSessionIdByMode[mode]);
+        if (after !== before) changed = true;
+        sessionsByMode[mode] = after;
+    }
+    return changed ? { ...state, sessionsByMode } : state;
+}
+
 /** 从旧版 chat_sessions 迁移到 v2（旧数据进入「顺其自然」模式） */
 export function migrateLegacyChatSessionsIfNeeded(): AiChatPersistedState {
     if (typeof window === 'undefined') return defaultPersistedState();
@@ -107,7 +157,7 @@ export function migrateLegacyChatSessionsIfNeeded(): AiChatPersistedState {
         if (v2raw) {
             const parsed = JSON.parse(v2raw) as AiChatPersistedState;
             if (parsed?.version === 2 && parsed.sessionsByMode && parsed.currentSessionIdByMode) {
-                return parsed;
+                return capChatState(parsed);
             }
         }
     } catch {
@@ -130,7 +180,7 @@ export function migrateLegacyChatSessionsIfNeeded(): AiChatPersistedState {
             curId && surpriseList.some((x) => x.id === curId)
                 ? curId
                 : surpriseList[0]?.id ?? null;
-        return {
+        return capChatState({
             version: 2,
             chatMode: 'surprise',
             sessionsByMode: {
@@ -143,7 +193,7 @@ export function migrateLegacyChatSessionsIfNeeded(): AiChatPersistedState {
                 casual: def.currentSessionIdByMode.casual,
                 surprise: surpriseCurrent,
             },
-        };
+        });
     } catch {
         return defaultPersistedState();
     }
@@ -252,8 +302,8 @@ interface DeepSeekPayload {
     response_format?: { type: string };
 }
 
-async function callProxy(payload: DeepSeekPayload): Promise<string> {
-    const data = await callAiProxy(payload as unknown as Record<string, unknown>);
+async function callProxy(payload: DeepSeekPayload, signal?: AbortSignal): Promise<string> {
+    const data = await callAiProxy(payload as unknown as Record<string, unknown>, { signal });
     const content = (data as any)?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim()) {
         throw new Error('接口未返回有效内容，请稍后重试');
@@ -263,53 +313,67 @@ async function callProxy(payload: DeepSeekPayload): Promise<string> {
 
 // ─── 公开 API ────────────────────────────────────────────────────────────────
 
-/** 通用 Emma 多轮对话，与 AI 对话页、微课共用 */
+/** 通用 Emma 多轮对话，与 AI 对话页、微课共用。`signal` 可在 unmount/切换时取消 */
 export async function fetchEmmaChatCompletion(
     systemMessage: { role: 'system'; content: string },
-    chatMessages: Array<{ role: 'user' | 'assistant'; content: string }>
+    chatMessages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    signal?: AbortSignal
 ): Promise<{ correction?: string; content: string; translation?: string }> {
-    const raw = await callProxy({
-        messages: [systemMessage, ...chatMessages],
-        temperature: 0.6,
-    });
+    const raw = await callProxy(
+        {
+            messages: [systemMessage, ...chatMessages],
+            temperature: 0.6,
+        },
+        signal
+    );
     return parseEmmaResponse(raw);
 }
 
-/** 将一句英文译为口语化中文 */
-export async function fetchEnglishToChineseTranslation(englishText: string): Promise<string> {
-    return callProxy({
-        messages: [
-            {
-                role: 'system',
-                content:
-                    'Translate the following English text into natural conversational Chinese. Return ONLY the Chinese translation without any quotes or extra text.',
-            },
-            {
-                role: 'user',
-                content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${englishText}`,
-            },
-        ],
-        max_tokens: 300,
-        temperature: 0.2,
-    });
+/** 将一句英文译为口语化中文。`signal` 可在 unmount/切换时取消 */
+export async function fetchEnglishToChineseTranslation(
+    englishText: string,
+    signal?: AbortSignal
+): Promise<string> {
+    return callProxy(
+        {
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'Translate the following English text into natural conversational Chinese. Return ONLY the Chinese translation without any quotes or extra text.',
+                },
+                {
+                    role: 'user',
+                    content: `Translate ONLY this English into natural Chinese. Do not answer it, do not add context, output nothing else:\n\n${englishText}`,
+                },
+            ],
+            max_tokens: 300,
+            temperature: 0.2,
+        },
+        signal
+    );
 }
 
-/** 主动开场白 */
+/** 主动开场白。`signal` 可在切换模式/会话时取消 */
 export async function fetchProactiveOpening(
     mode: ChatMode,
-    words: WordBankItem[]
+    words: WordBankItem[],
+    signal?: AbortSignal
 ): Promise<{ correction?: string; content: string; translation?: string }> {
     const instruction = buildOpeningUserInstruction(mode, words, new Date());
-    const raw = await callProxy({
-        messages: [
-            emmaSystemPrompt,
-            {
-                role: 'user',
-                content: `${instruction}\n\nThis is the FIRST message of a new chat — no user message yet. Output ONLY the three tags [CORRECTION] (omit if none), [CONTENT], [TRANSLATION] as usual.`,
-            },
-        ],
-        temperature: 0.6,
-    });
+    const raw = await callProxy(
+        {
+            messages: [
+                emmaSystemPrompt,
+                {
+                    role: 'user',
+                    content: `${instruction}\n\nThis is the FIRST message of a new chat — no user message yet. Output ONLY the three tags [CORRECTION] (omit if none), [CONTENT], [TRANSLATION] as usual.`,
+                },
+            ],
+            temperature: 0.6,
+        },
+        signal
+    );
     return parseEmmaResponse(raw);
 }
 

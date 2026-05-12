@@ -31,6 +31,7 @@ import {
     emmaSystemPrompt,
     createEmptySession,
     migrateLegacyChatSessionsIfNeeded,
+    capChatState,
     fetchProactiveOpening,
     fetchEmmaChatCompletion,
     fetchEnglishToChineseTranslation,
@@ -98,9 +99,19 @@ export function AiChatPage() {
         syncDailyLoopDate();
     }, []);
     // 传函数引用而非调用结果，避免每次 render 都跑 migrate + localStorage I/O
-    const [persisted, setPersisted] = useLocalStorage<AiChatPersistedState>(
+    const [persisted, setPersistedRaw] = useLocalStorage<AiChatPersistedState>(
         'ai_chat_v2',
         migrateLegacyChatSessionsIfNeeded
+    );
+    // 每次写入前应用 capChatState，给 session 数与每会话消息数封顶，
+    // 避免长期使用后 localStorage 撑爆。
+    const setPersisted = React.useCallback<typeof setPersistedRaw>(
+        (updater) => {
+            setPersistedRaw((prev) =>
+                capChatState(typeof updater === 'function' ? (updater as (p: AiChatPersistedState) => AiChatPersistedState)(prev) : updater)
+            );
+        },
+        [setPersistedRaw]
     );
 
     const chatMode = persisted.chatMode;
@@ -150,6 +161,17 @@ export function AiChatPage() {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
     const [isOpening, setIsOpening] = React.useState(false);
     const openingRunRef = React.useRef(0);
+
+    // AbortController：组件 unmount 时取消所有在途 AI 请求，避免离开页面后还在等待
+    const sendAbortRef = React.useRef<AbortController | null>(null);
+    const openingAbortRef = React.useRef<AbortController | null>(null);
+    React.useEffect(
+        () => () => {
+            sendAbortRef.current?.abort();
+            openingAbortRef.current?.abort();
+        },
+        []
+    );
 
     const [selectionBox, setSelectionBox] = React.useState({
         show: false,
@@ -218,11 +240,16 @@ export function AiChatPage() {
         const runId = ++openingRunRef.current;
         setIsOpening(true);
 
+        // 切换模式 / 会话时取消上一次的开场请求；新建一个 controller 给本次用
+        openingAbortRef.current?.abort();
+        const controller = new AbortController();
+        openingAbortRef.current = controller;
+
         (async () => {
             try {
                 const freshWords = useWordBankStore.getState().words;
-                const parsed = await fetchProactiveOpening(chatMode, freshWords);
-                if (runId !== openingRunRef.current) return;
+                const parsed = await fetchProactiveOpening(chatMode, freshWords, controller.signal);
+                if (runId !== openingRunRef.current || controller.signal.aborted) return;
                 const title =
                     parsed.content.length > 32 ? `${parsed.content.slice(0, 30)}...` : parsed.content || 'New Chat';
                 updateSession(currentSession.id, {
@@ -238,8 +265,11 @@ export function AiChatPage() {
                     openingPending: false,
                     title,
                 });
-            } catch {
-                if (runId !== openingRunRef.current) return;
+            } catch (err) {
+                if (runId !== openingRunRef.current || controller.signal.aborted) return;
+                // 仅在非 abort 错误时才落地默认开场
+                const isAbort = err instanceof DOMException && err.name === 'AbortError';
+                if (isAbort) return;
                 updateSession(currentSession.id, {
                     messages: [
                         {
@@ -383,11 +413,18 @@ export function AiChatPage() {
         setInput('');
         setIsLoading(true);
 
+        // 取消上一次还在飞的发送（理论上 UI 已 disable，但 unmount 后再次进入仍可能命中）
+        sendAbortRef.current?.abort();
+        const controller = new AbortController();
+        sendAbortRef.current = controller;
+
         try {
             const { correction, content, translation } = await fetchEmmaChatCompletion(
                 emmaSystemPrompt,
-                messagesForApi.map((m) => ({ role: m.role, content: m.content }))
+                messagesForApi.map((m) => ({ role: m.role, content: m.content })),
+                controller.signal
             );
+            if (controller.signal.aborted) return;
 
             const assistantMessage = { role: 'assistant' as const, correction, content, translation, showTranslation: false };
 
@@ -409,6 +446,7 @@ export function AiChatPage() {
             markChatRoundDone();
 
         } catch (error) {
+            if (controller.signal.aborted) return;
             // rollback 乐观插入的用户消息
             setPersisted((p) => {
                 const mode = p.chatMode;
@@ -426,7 +464,7 @@ export function AiChatPage() {
             const msg = error instanceof Error ? error.message : '连接失败，请稍后重试';
             toast(msg, 'error');
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) setIsLoading(false);
         }
     };
 

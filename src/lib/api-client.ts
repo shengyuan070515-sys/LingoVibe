@@ -53,9 +53,13 @@ function buildAiProxyError(status: number, message: string, retryAfterSec?: numb
 /**
  * 调用 /api/ai-proxy 的统一入口。
  * @param payload 会被 JSON.stringify 一次；既用作 body 也用作签名 message 的一部分
+ * @param options `signal` 用于取消请求（组件 unmount / 切换会话时）
  * @returns DeepSeek 原始响应（含 choices 等字段）
  */
-export async function callAiProxy(payload: Record<string, unknown>): Promise<unknown> {
+export async function callAiProxy(
+    payload: Record<string, unknown>,
+    options?: { signal?: AbortSignal }
+): Promise<unknown> {
     const base = getApiBase();
     const url = base ? `${base}/api/ai-proxy` : '/api/ai-proxy';
     const secret = getSigningSecret();
@@ -77,6 +81,7 @@ export async function callAiProxy(payload: Record<string, unknown>): Promise<unk
         method: 'POST',
         headers,
         body: bodyString,
+        signal: options?.signal,
     });
 
     if (!res.ok) {
